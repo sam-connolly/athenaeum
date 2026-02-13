@@ -9,6 +9,7 @@ import { Sidebar } from '@/components/Sidebar'
 import { DocumentRenderer } from '@/components/DocumentRenderer'
 import { EmptyState } from '@/components/EmptyState'
 import { ImportDialog } from '@/components/ImportDialog'
+import { SmartImportDialog } from '@/components/SmartImportDialog'
 import { DatabaseManager } from '@/components/DatabaseManager'
 import type { Document } from '@/types/document'
 import { useIsMobile } from '@/hooks/use-mobile'
@@ -92,6 +93,11 @@ function App() {
         
         <div className="flex items-center gap-2">
           <DatabaseManager />
+          <SmartImportDialog 
+            onImport={handleImport} 
+            documents={documents}
+            setDocuments={setDocuments}
+          />
           <ImportDialog onImport={handleImport} />
         </div>
       </header>
