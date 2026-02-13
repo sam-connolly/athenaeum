@@ -2,13 +2,16 @@ import { motion } from 'framer-motion'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
 import { useWarhammerDatabase } from '@/hooks/use-warhammer-database'
+import { RelatedDocuments } from '@/components/RelatedDocuments'
 import type { Document } from '@/types/document'
 
 interface DocumentRendererProps {
   document: Document | null
+  documents: Document[]
+  onSelectDocument: (id: string) => void
 }
 
-export function DocumentRenderer({ document }: DocumentRendererProps) {
+export function DocumentRenderer({ document, documents, onSelectDocument }: DocumentRendererProps) {
   const { getFactionById, getBattleById, getCharacterById } = useWarhammerDatabase()
 
   if (!document) {
@@ -115,6 +118,33 @@ export function DocumentRenderer({ document }: DocumentRendererProps) {
       }
     }
   }
+
+  let relatedDocsSection: React.ReactNode = null
+  if (document.entityType && document.entityId) {
+    let entity
+    if (document.entityType === 'character') {
+      entity = getCharacterById(document.entityId)
+    } else if (document.entityType === 'faction') {
+      entity = getFactionById(document.entityId)
+    } else if (document.entityType === 'battle') {
+      entity = getBattleById(document.entityId)
+    }
+
+    if (entity) {
+      relatedDocsSection = (
+        <RelatedDocuments
+          documents={documents}
+          currentDocumentId={document.id}
+          entity={entity}
+          entityType={document.entityType}
+          onSelectDocument={onSelectDocument}
+          getFactionById={getFactionById}
+          getBattleById={getBattleById}
+          getCharacterById={getCharacterById}
+        />
+      )
+    }
+  }
   
   return (
     <motion.article
@@ -172,6 +202,8 @@ export function DocumentRenderer({ document }: DocumentRendererProps) {
           )
         })}
       </div>
+
+      {relatedDocsSection}
     </motion.article>
   )
 }

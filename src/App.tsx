@@ -104,7 +104,11 @@ function App() {
             <EmptyState onImport={handleImport} />
           ) : (
             <ScrollArea className="h-full">
-              <DocumentRenderer document={activeDocument} />
+              <DocumentRenderer 
+                document={activeDocument} 
+                documents={documents}
+                onSelectDocument={handleSelectDocument}
+              />
             </ScrollArea>
           )}
         </main>

@@ -1,8 +1,17 @@
 import { useState } from 'react'
-import { FileText, Pencil, Trash } from '@phosphor-icons/react'
+import { FileText, Pencil, Trash, User, Shield, Sword, FunnelSimple } from '@phosphor-icons/react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Badge } from '@/components/ui/badge'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuCheckboxItem,
+  DropdownMenuTrigger,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+} from '@/components/ui/dropdown-menu'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -39,12 +48,38 @@ export function Sidebar({
   const [editTitle, setEditTitle] = useState('')
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [hoveredId, setHoveredId] = useState<string | null>(null)
+  const [entityFilters, setEntityFilters] = useState<{
+    character: boolean
+    faction: boolean
+    battle: boolean
+    unlinked: boolean
+  }>({
+    character: true,
+    faction: true,
+    battle: true,
+    unlinked: true,
+  })
 
-  const filteredDocs = documents.filter(
-    (doc) =>
+  const filteredDocs = documents.filter((doc) => {
+    const matchesSearch =
       doc.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       doc.content.toLowerCase().includes(searchQuery.toLowerCase())
-  )
+
+    if (!matchesSearch) return false
+
+    if (doc.entityType === 'character') return entityFilters.character
+    if (doc.entityType === 'faction') return entityFilters.faction
+    if (doc.entityType === 'battle') return entityFilters.battle
+    if (!doc.entityType) return entityFilters.unlinked
+
+    return true
+  })
+
+  const activeFilterCount = Object.values(entityFilters).filter((v) => !v).length
+
+  const toggleFilter = (key: keyof typeof entityFilters) => {
+    setEntityFilters((prev) => ({ ...prev, [key]: !prev[key] }))
+  }
 
   const handleStartEdit = (doc: Document) => {
     setEditingId(doc.id)
@@ -71,10 +106,72 @@ export function Sidebar({
     }
   }
 
+  const getDocumentIcon = (doc: Document) => {
+    switch (doc.entityType) {
+      case 'character':
+        return <User size={18} className="text-accent" />
+      case 'faction':
+        return <Shield size={18} className="text-primary" />
+      case 'battle':
+        return <Sword size={18} className="text-destructive" />
+      default:
+        return <FileText size={18} className="text-muted-foreground" />
+    }
+  }
+
   return (
     <aside className="w-80 h-full border-r border-border bg-card flex flex-col">
-      <div className="p-4 border-b border-border">
-        <h2 className="text-xl font-semibold mb-4">Documents</h2>
+      <div className="p-4 border-b border-border space-y-3">
+        <div className="flex items-center justify-between">
+          <h2 className="text-xl font-semibold">Documents</h2>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-8 w-8 relative">
+                <FunnelSimple size={18} />
+                {activeFilterCount > 0 && (
+                  <Badge
+                    variant="destructive"
+                    className="absolute -top-1 -right-1 h-4 w-4 p-0 flex items-center justify-center text-[10px]"
+                  >
+                    {activeFilterCount}
+                  </Badge>
+                )}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuLabel>Filter by type</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuCheckboxItem
+                checked={entityFilters.character}
+                onCheckedChange={() => toggleFilter('character')}
+              >
+                <User size={16} className="mr-2" />
+                Characters
+              </DropdownMenuCheckboxItem>
+              <DropdownMenuCheckboxItem
+                checked={entityFilters.faction}
+                onCheckedChange={() => toggleFilter('faction')}
+              >
+                <Shield size={16} className="mr-2" />
+                Factions
+              </DropdownMenuCheckboxItem>
+              <DropdownMenuCheckboxItem
+                checked={entityFilters.battle}
+                onCheckedChange={() => toggleFilter('battle')}
+              >
+                <Sword size={16} className="mr-2" />
+                Battles
+              </DropdownMenuCheckboxItem>
+              <DropdownMenuCheckboxItem
+                checked={entityFilters.unlinked}
+                onCheckedChange={() => toggleFilter('unlinked')}
+              >
+                <FileText size={16} className="mr-2" />
+                Unlinked
+              </DropdownMenuCheckboxItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
         <Input
           type="search"
           placeholder="Search documents..."
@@ -131,7 +228,7 @@ export function Sidebar({
                     onClick={() => onSelectDocument(doc.id)}
                     className="w-full text-left p-3 flex items-start gap-2"
                   >
-                    <FileText className="flex-shrink-0 mt-0.5 text-muted-foreground" size={18} />
+                    {getDocumentIcon(doc)}
                     <div className="flex-1 min-w-0">
                       <h3 className="text-sm font-medium truncate">{doc.title}</h3>
                       <p className="text-xs text-muted-foreground">
