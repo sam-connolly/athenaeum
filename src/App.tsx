@@ -9,6 +9,7 @@ import { Sidebar } from '@/components/Sidebar'
 import { DocumentRenderer } from '@/components/DocumentRenderer'
 import { EmptyState } from '@/components/EmptyState'
 import { ImportDialog } from '@/components/ImportDialog'
+import { DatabaseManager } from '@/components/DatabaseManager'
 import type { Document } from '@/types/document'
 import { useIsMobile } from '@/hooks/use-mobile'
 
@@ -89,7 +90,10 @@ function App() {
         
         <h1 className="text-xl font-semibold flex-1">WikiDrive</h1>
         
-        <ImportDialog onImport={handleImport} />
+        <div className="flex items-center gap-2">
+          <DatabaseManager />
+          <ImportDialog onImport={handleImport} />
+        </div>
       </header>
 
       <div className="flex-1 flex overflow-hidden">

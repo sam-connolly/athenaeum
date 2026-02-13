@@ -1,4 +1,7 @@
 import { motion } from 'framer-motion'
+import { Badge } from '@/components/ui/badge'
+import { Card, CardContent } from '@/components/ui/card'
+import { useWarhammerDatabase } from '@/hooks/use-warhammer-database'
 import type { Document } from '@/types/document'
 
 interface DocumentRendererProps {
@@ -6,6 +9,8 @@ interface DocumentRendererProps {
 }
 
 export function DocumentRenderer({ document }: DocumentRendererProps) {
+  const { getFactionById, getBattleById, getCharacterById } = useWarhammerDatabase()
+
   if (!document) {
     return (
       <div className="flex items-center justify-center h-full text-muted-foreground">
@@ -15,6 +20,101 @@ export function DocumentRenderer({ document }: DocumentRendererProps) {
   }
 
   const lines = document.content.split('\n')
+
+  let entityMetadata: React.ReactNode = null
+  if (document.entityType && document.entityId) {
+    if (document.entityType === 'character') {
+      const character = getCharacterById(document.entityId)
+      if (character) {
+        const faction = getFactionById(character.factionId)
+        entityMetadata = (
+          <Card className="mb-6">
+            <CardContent className="pt-6">
+              <div className="space-y-3">
+                <div>
+                  <p className="text-sm text-muted-foreground mb-2">Character Information</p>
+                  <div className="flex flex-wrap gap-2">
+                    {faction && (
+                      <Badge variant="default">
+                        Faction: {faction.name}
+                      </Badge>
+                    )}
+                    {character.role && (
+                      <Badge variant="secondary">
+                        Role: {character.role}
+                      </Badge>
+                    )}
+                    {character.battleIds.length > 0 && (
+                      <Badge variant="outline">
+                        {character.battleIds.length} Battle{character.battleIds.length !== 1 ? 's' : ''}
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+                {character.battleIds.length > 0 && (
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-2">Battles</p>
+                    <div className="flex flex-wrap gap-2">
+                      {character.battleIds.map((battleId) => {
+                        const battle = getBattleById(battleId)
+                        return battle ? (
+                          <Badge key={battleId} variant="outline">
+                            {battle.name}
+                          </Badge>
+                        ) : null
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )
+      }
+    } else if (document.entityType === 'faction') {
+      const faction = getFactionById(document.entityId)
+      if (faction && faction.description) {
+        entityMetadata = (
+          <Card className="mb-6">
+            <CardContent className="pt-6">
+              <p className="text-sm text-muted-foreground mb-2">Faction Information</p>
+              <p className="text-sm">{faction.description}</p>
+            </CardContent>
+          </Card>
+        )
+      }
+    } else if (document.entityType === 'battle') {
+      const battle = getBattleById(document.entityId)
+      if (battle) {
+        entityMetadata = (
+          <Card className="mb-6">
+            <CardContent className="pt-6">
+              <div className="space-y-3">
+                <div>
+                  <p className="text-sm text-muted-foreground mb-2">Battle Information</p>
+                  <div className="flex flex-wrap gap-2">
+                    {battle.date && (
+                      <Badge variant="secondary">
+                        Date: {battle.date}
+                      </Badge>
+                    )}
+                    {battle.location && (
+                      <Badge variant="secondary">
+                        Location: {battle.location}
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+                {battle.description && (
+                  <p className="text-sm">{battle.description}</p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )
+      }
+    }
+  }
   
   return (
     <motion.article
@@ -32,6 +132,8 @@ export function DocumentRenderer({ document }: DocumentRendererProps) {
           Last updated: {new Date(document.updatedAt).toLocaleDateString()}
         </time>
       </header>
+
+      {entityMetadata}
 
       <div className="prose prose-lg max-w-none space-y-4">
         {lines.map((line, index) => {

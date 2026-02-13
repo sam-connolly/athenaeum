@@ -5,4 +5,6 @@ export interface Document {
   createdAt: number
   updatedAt: number
   sourceUrl?: string
+  entityType?: 'character' | 'faction' | 'battle'
+  entityId?: string
 }

@@ -12,6 +12,13 @@ This application manages document imports, displays content with formatting, and
 
 ## Essential Features
 
+### Warhammer Entity Database
+- **Functionality**: Store and manage structured data for Warhammer characters, factions, and battles in a JSON database with relationships between entities
+- **Purpose**: Provides structured metadata that can be linked to wiki documents, enabling rich cross-references and organized information architecture
+- **Trigger**: User clicks database icon in header to open Database Manager
+- **Progression**: Open manager → View entities (factions/battles/characters) → Add new entities with forms → Link entities via IDs (characters to factions/battles) → Export database as JSON
+- **Success criteria**: Entities are stored persistently, relationships are maintained correctly, database can be exported to JSON format, and entity metadata displays on linked documents
+
 ### Document Import from Google Drive
 - **Functionality**: Allow users to paste a Google Drive text document URL to import content
 - **Purpose**: Enables users to quickly populate their wiki with existing documentation without manual copy-paste
@@ -48,6 +55,11 @@ This application manages document imports, displays content with formatting, and
 - **Success criteria**: Documents can be renamed, deleted, and the changes persist
 
 ## Edge Case Handling
+- **No Entities State**: Display empty state messages for each entity type (factions, battles, characters) with prompts to add first entry
+- **Orphaned Characters**: When deleting a faction, clear the factionId for affected characters rather than deleting them
+- **Battle Cleanup**: When deleting a battle, remove battle ID from all characters' battleIds arrays
+- **Character Without Faction**: Require faction selection when creating character, validate faction exists
+- **Export Empty Database**: Allow exporting empty database structure for reference/templates
 - **No Documents State**: Display welcoming empty state with clear call-to-action to import first document
 - **Invalid Google Drive URLs**: Show friendly error message with format example when URL validation fails
 - **Network Failures**: Display toast notification explaining the issue and suggest retry action
@@ -118,6 +130,8 @@ Animations should be subtle and purposeful, reinforcing hierarchy and spatial re
   - `Trash` for delete
   - `List` for mobile menu toggle
   - `X` for closing modals/sheets
+  - `Database` for entity database manager
+  - `Download` for export database action
   
 - **Spacing**: 
   - Page padding: `p-8` (desktop), `p-4` (mobile)
