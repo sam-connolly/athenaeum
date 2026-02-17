@@ -451,3 +451,7 @@ Be thorough and extract all characters mentioned in the document. For the descri
     </Dialog>
   )
 }
+      </DialogContent>
+    </Dialog>
+  )
+}
