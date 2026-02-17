@@ -107,11 +107,6 @@ Return the result as a valid JSON object with a single property called "characte
     const newDocuments = selectedChars.map((char) => ({
       title: char.name,
       content: `${char.role ? `## Role\n\n${char.role}\n\n` : ''}## Description\n\n${char.description}${char.relevantContent ? `\n\n## Additional Information\n\n${char.relevantContent}` : ''}\n\n## Source\n\nExtracted from: ${documentTitle}`,
-    }))
-
-    onCharactersCreated(newDocuments)
-    toast.success(`Created ${newDocuments.length} character page${newDocuments.length !== 1 ? 's' : ''}`)
-    handleReset()
     onOpenChange(false)
   }
 
