@@ -42,7 +42,7 @@ export function CharacterExtractionDialog({
   const handleScanForCharacters = async () => {
     setIsScanning(true)
     try {
-      const prompt = `You are analyzing a document to extract character information.
+      const prompt = window.spark.llmPrompt`You are analyzing a document to extract character information.
 
 Document title: ${documentTitle}
 Document content:
