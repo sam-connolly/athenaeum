@@ -42,7 +42,7 @@ export function CharacterExtractionDialog({
   const handleScanForCharacters = async () => {
     setIsScanning(true)
     try {
-      const prompt = spark.llmPrompt`You are analyzing a document to extract character information.
+      const prompt = `You are analyzing a document to extract character information.
 
 Document title: ${documentTitle}
 Document content:
@@ -66,7 +66,7 @@ Return the result as a valid JSON object with a single property called "characte
   ]
 }`
 
-      const response = await spark.llm(prompt, 'gpt-4o', true)
+      const response = await window.spark.llm(prompt, 'gpt-4o', true)
       const result = JSON.parse(response)
       
       if (result.characters && Array.isArray(result.characters)) {
