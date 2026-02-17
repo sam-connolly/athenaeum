@@ -82,7 +82,7 @@ Return the result as a valid JSON object with a single property called "characte
         throw new Error('Invalid response format')
       }
     } catch (error) {
-      toast.error('Failed to scan for characters')
+      toast.error('Unable to scan for characters. Please try again or check the document content.')
       console.error('Character extraction error:', error)
     } finally {
       setIsScanning(false)
