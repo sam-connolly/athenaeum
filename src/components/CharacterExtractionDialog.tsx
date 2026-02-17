@@ -100,13 +100,23 @@ If no characters are found, return: {"characters": []}`
         return
       }
 
+      let cleanedResponse = response.trim()
+      
+      if (cleanedResponse.startsWith('```json')) {
+        cleanedResponse = cleanedResponse.replace(/^```json\s*/, '').replace(/\s*```$/, '')
+      } else if (cleanedResponse.startsWith('```')) {
+        cleanedResponse = cleanedResponse.replace(/^```\s*/, '').replace(/\s*```$/, '')
+      }
+      
+      cleanedResponse = cleanedResponse.trim()
+
       let result: { characters?: Character[] }
       try {
-        result = JSON.parse(response)
+        result = JSON.parse(cleanedResponse)
       } catch (parseError) {
         const errorMsg = parseError instanceof Error ? parseError.message : 'Invalid JSON'
         toast.error(`Failed to parse AI response: ${errorMsg}. Response was not valid JSON format.`)
-        console.error('Character extraction JSON parse error:', parseError, 'Response:', response.substring(0, 500))
+        console.error('Character extraction JSON parse error:', parseError, 'Original response:', response.substring(0, 500), 'Cleaned response:', cleanedResponse.substring(0, 500))
         setIsScanning(false)
         return
       }

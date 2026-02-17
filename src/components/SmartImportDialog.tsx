@@ -202,15 +202,25 @@ Be thorough and extract all characters mentioned in the document. For the descri
         throw new Error('AI returned an empty response.')
       }
 
+      let cleanedResponse = llmResponse.trim()
+      
+      if (cleanedResponse.startsWith('```json')) {
+        cleanedResponse = cleanedResponse.replace(/^```json\s*/, '').replace(/\s*```$/, '')
+      } else if (cleanedResponse.startsWith('```')) {
+        cleanedResponse = cleanedResponse.replace(/^```\s*/, '').replace(/\s*```$/, '')
+      }
+      
+      cleanedResponse = cleanedResponse.trim()
+
       let parsedResult: ParsedData
       try {
-        parsedResult = JSON.parse(llmResponse)
+        parsedResult = JSON.parse(cleanedResponse)
       } catch (parseError) {
         const errorDetails: ErrorDetails = {
           stage: 'Parsing AI Response',
           message: 'Failed to parse AI response as JSON',
           technicalDetails: parseError instanceof Error ? parseError.message : 'Invalid JSON',
-          rawResponse: llmResponse.substring(0, 500),
+          rawResponse: `Original: ${llmResponse.substring(0, 300)}... | Cleaned: ${cleanedResponse.substring(0, 300)}...`,
         }
         setError(errorDetails)
         throw new Error('Failed to parse AI response. The response was not valid JSON.')
