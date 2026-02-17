@@ -1,19 +1,16 @@
 import { useState } from 'react'
-import { Checkbox } from '@/components/ui/check
-import {
-  DialogContent,
+import { Checkbox } from '@/components/ui/checkbox'
 import {
   Dialog,
   DialogContent,
   DialogDescription,
-
-  name: string
-  description:
-}
-interface CharacterExtractionDialogProps {
-  onOpenChange: (open: boolean) => void
-  documentTitle: string
-}
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { ScrollArea } from '@/components/ui/scroll-area'
+import { toast } from 'sonner'
 
 interface ExtractedCharacter {
   name: string
@@ -32,40 +29,51 @@ interface CharacterExtractionDialogProps {
 
 export function CharacterExtractionDialog({
   open,
-        setHasS
-        return
+  onOpenChange,
+  documentContent,
+  documentTitle,
+  onCharactersCreated,
+}: CharacterExtractionDialogProps) {
+  const [isScanning, setIsScanning] = useState(false)
+  const [hasScanned, setHasScanned] = useState(false)
+  const [characters, setCharacters] = useState<ExtractedCharacter[]>([])
+  const [selectedCharacters, setSelectedCharacters] = useState<Set<string>>(new Set())
 
-      setHasScanned(tr
-    } catch (error) {
-      console.error(error)
-      setIsScanning(false)
-  }
-  const toggleCharacter = (characterName: string) => 
-
-        newSet.delete(characterName)
-        newSet.add(char
+  const handleScanForCharacters = async () => {
+    setIsScanning(true)
     
-  }
-  const handleCreateCharacters = () => {
+    try {
+      const promptText = `You are analyzing a Warhammer 40k document to extract character information.
 
-      let content = `# ${charact
+Document title: ${documentTitle}
+Document content:
+${documentContent}
 
-      }
-      content += `
+Extract all characters mentioned in this document. For each character, provide:
+1. Their name
+2. Their role or title (if mentioned)
+3. A detailed description (2-3 paragraphs)
+4. Relevant content/quotes from the document about them
 
-      content += `*This character page was extracted from "${documentTitle}
-      return {
-        content,
-    })
-    onCharactersCreated(characterPages)
-
-  }
-
-    setHasScanned(false)
-  }
-
-    if (!newOpen) {
+Return a JSON object with a "characters" property containing an array of character objects:
+{
+  "characters": [
+    {
+      "name": "character name",
+      "role": "role/title (optional)",
+      "description": "detailed description",
+      "relevantContent": "relevant quotes or information from the document"
     }
+  ]
+}
+
+Only extract actual named characters, not generic references.`
+
+      const response = await window.spark.llm(promptText, 'gpt-4o', true)
+      const parsedData = JSON.parse(response)
+
+      if (!parsedData.characters || parsedData.characters.length === 0) {
+        toast.info('No characters found in this document')
         setHasScanned(true)
         setIsScanning(false)
         return
@@ -100,157 +108,119 @@ export function CharacterExtractionDialog({
     const characterPages = selectedChars.map((character) => {
       let content = `# ${character.name}\n\n`
       
-                      }`}
-                    >
-       
+      if (character.role) {
+        content += `**Role:** ${character.role}\n\n`
+      }
       
+      content += `## Description\n\n${character.description}\n\n`
+      
+      if (character.relevantContent) {
+        content += `## Relevant Information\n\n${character.relevantContent}\n\n`
+      }
+      
+      content += `*This character page was extracted from "${documentTitle}"*\n`
+      
+      return {
+        title: character.name,
+        content,
+      }
+    })
+    
+    onCharactersCreated(characterPages)
+    onOpenChange(false)
+    setHasScanned(false)
+    setCharacters([])
+    setSelectedCharacters(new Set())
+  }
+
+  const handleOpenChange = (newOpen: boolean) => {
+    if (!newOpen) {
+      setHasScanned(false)
+      setCharacters([])
+      setSelectedCharacters(new Set())
+    }
+    onOpenChange(newOpen)
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogContent className="max-w-2xl max-h-[90vh]">
+        <DialogHeader>
+          <DialogTitle>Extract Characters</DialogTitle>
+          <DialogDescription>
+            Scan this document for characters and create individual wiki pages for them.
+          </DialogDescription>
+        </DialogHeader>
+
+        <ScrollArea className="max-h-[calc(90vh-200px)]">
+          <div className="space-y-4 py-4 pr-4">
+            {!hasScanned ? (
+              <Button
+                onClick={handleScanForCharacters}
+                disabled={isScanning}
+                className="w-full"
+              >
+                {isScanning ? 'Scanning...' : 'Scan for Characters'}
+              </Button>
+            ) : (
+              <>
+                {characters.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-8">
+                    No characters found in this document.
+                  </p>
+                ) : (
+                  <>
+                    <p className="text-sm text-muted-foreground">
+                      Select characters to create wiki pages:
+                    </p>
+                    <div className="space-y-3">
+                      {characters.map((character) => (
+                        <div
+                          key={character.name}
+                          className="flex items-start gap-3 p-3 border rounded-lg hover:bg-accent/50 cursor-pointer transition-colors"
+                          onClick={() => toggleCharacter(character.name)}
+                        >
+                          <Checkbox
+                            checked={selectedCharacters.has(character.name)}
+                            onCheckedChange={() => toggleCharacter(character.name)}
                             onClick={(e) => e.stopPropagation()}
-                          <div className="flex-
-                              {character.name}
-                          
+                          />
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2">
+                              <p className="font-medium">{character.name}</p>
+                              {character.role && (
+                                <Badge variant="secondary" className="text-xs">
+                                  {character.role}
                                 </Badge>
+                              )}
+                            </div>
+                            <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
+                              {character.description}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
 
-              
-                          </di
-                
-       
-      
-
-
-          <Button variant="outline" 
-          </Button>
-            <Butt
-   
-
-              Create {selecte
-          )}
+                    <div className="flex gap-2 pt-4">
+                      <Button variant="outline" onClick={() => handleOpenChange(false)} className="flex-1">
+                        Cancel
+                      </Button>
+                      <Button
+                        onClick={handleCreateCharacters}
+                        disabled={selectedCharacters.size === 0}
+                        className="flex-1"
+                      >
+                        Create {selectedCharacters.size} Character{selectedCharacters.size !== 1 ? 's' : ''}
+                      </Button>
+                    </div>
+                  </>
+                )}
+              </>
+            )}
+          </div>
+        </ScrollArea>
       </DialogContent>
+    </Dialog>
   )
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+}
