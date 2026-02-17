@@ -37,7 +37,10 @@ export function ImportDialog({ onImport }: ImportDialogProps) {
     try {
       let fileId = ''
       
-      if (googleDriveUrl.includes('/file/d/')) {
+      if (googleDriveUrl.includes('/document/d/')) {
+        const match = googleDriveUrl.match(/\/document\/d\/([a-zA-Z0-9_-]+)/)
+        if (match) fileId = match[1]
+      } else if (googleDriveUrl.includes('/file/d/')) {
         const match = googleDriveUrl.match(/\/file\/d\/([a-zA-Z0-9_-]+)/)
         if (match) fileId = match[1]
       } else if (googleDriveUrl.includes('id=')) {
@@ -46,7 +49,7 @@ export function ImportDialog({ onImport }: ImportDialogProps) {
       }
 
       if (!fileId) {
-        toast.error('Invalid Google Drive URL format')
+        toast.error('Invalid Google Drive URL format. Example: https://docs.google.com/document/d/FILE_ID/edit')
         setIsLoading(false)
         return
       }
