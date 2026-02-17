@@ -249,7 +249,7 @@ Be thorough and extract all characters mentioned in the document. For the descri
             const factionDoc: Document = {
               id: `doc-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
               title: parsedData.faction.name,
-              content: `# ${parsedData.faction.name}\n\n${parsedData.faction.description}`,
+              content: `${parsedData.faction.description}`,
               createdAt: Date.now(),
               updatedAt: Date.now(),
               sourceUrl: googleDriveUrl,
@@ -307,7 +307,7 @@ Be thorough and extract all characters mentioned in the document. For the descri
           const characterDoc: Document = {
             id: `doc-${Date.now()}-${Math.random().toString(36).substr(2, 9)}-${index}`,
             title: charData.name,
-            content: `# ${charData.name}\n\n${charData.role ? `**Role:** ${charData.role}\n\n` : ''}${charData.description}${charData.battles && charData.battles.length > 0 ? `\n\n## Battles\n\n${charData.battles.map(b => `- ${b}`).join('\n')}` : ''}`,
+            content: `${charData.role ? `## Role\n\n${charData.role}\n\n` : ''}## Background\n\n${charData.description}${charData.battles && charData.battles.length > 0 ? `\n\n## Notable Battles\n\n${charData.battles.map(b => `- ${b}`).join('\n')}` : ''}`,
             createdAt: Date.now(),
             updatedAt: Date.now(),
             sourceUrl: googleDriveUrl,

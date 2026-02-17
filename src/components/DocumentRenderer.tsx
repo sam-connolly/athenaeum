@@ -4,6 +4,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { useWarhammerDatabase } from '@/hooks/use-warhammer-database'
 import { RelatedDocuments } from '@/components/RelatedDocuments'
 import type { Document } from '@/types/document'
+import { useMemo } from 'react'
 
 interface DocumentRendererProps {
   document: Document | null
@@ -11,8 +12,56 @@ interface DocumentRendererProps {
   onSelectDocument: (id: string) => void
 }
 
+interface Heading {
+  level: number
+  text: string
+  id: string
+  lineIndex: number
+}
+
+function slugify(text: string): string {
+  return text
+    .toLowerCase()
+    .trim()
+    .replace(/[^\w\s-]/g, '')
+    .replace(/[\s_-]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+}
+
 export function DocumentRenderer({ document, documents, onSelectDocument }: DocumentRendererProps) {
   const { getFactionById, getBattleById, getCharacterById } = useWarhammerDatabase()
+
+  const lines = document?.content.split('\n') || []
+
+  const headings = useMemo(() => {
+    if (!document) return []
+    const extractedHeadings: Heading[] = []
+    lines.forEach((line, index) => {
+      if (line.startsWith('# ')) {
+        extractedHeadings.push({
+          level: 1,
+          text: line.substring(2),
+          id: slugify(line.substring(2)),
+          lineIndex: index,
+        })
+      } else if (line.startsWith('## ')) {
+        extractedHeadings.push({
+          level: 2,
+          text: line.substring(3),
+          id: slugify(line.substring(3)),
+          lineIndex: index,
+        })
+      } else if (line.startsWith('### ')) {
+        extractedHeadings.push({
+          level: 3,
+          text: line.substring(4),
+          id: slugify(line.substring(4)),
+          lineIndex: index,
+        })
+      }
+    })
+    return extractedHeadings
+  }, [document, lines])
 
   if (!document) {
     return (
@@ -21,8 +70,6 @@ export function DocumentRenderer({ document, documents, onSelectDocument }: Docu
       </div>
     )
   }
-
-  const lines = document.content.split('\n')
 
   let entityMetadata: React.ReactNode = null
   if (document.entityType && document.entityId) {
@@ -165,6 +212,36 @@ export function DocumentRenderer({ document, documents, onSelectDocument }: Docu
 
       {entityMetadata}
 
+      {headings.length > 0 && (
+        <Card className="mb-8">
+          <CardContent className="pt-6">
+            <h2 className="text-lg font-semibold mb-4">Table of Contents</h2>
+            <nav className="space-y-1">
+              {headings.map((heading, index) => (
+                <a
+                  key={index}
+                  href={`#${heading.id}`}
+                  className={`block text-sm hover:text-primary transition-colors ${
+                    heading.level === 1 ? 'font-medium' : ''
+                  } ${heading.level === 2 ? 'pl-4' : ''} ${
+                    heading.level === 3 ? 'pl-8 text-muted-foreground' : ''
+                  }`}
+                  onClick={(e) => {
+                    e.preventDefault()
+                    const element = globalThis.document.querySelector(`#${heading.id}`)
+                    if (element) {
+                      element.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                    }
+                  }}
+                >
+                  {heading.text}
+                </a>
+              ))}
+            </nav>
+          </CardContent>
+        </Card>
+      )}
+
       <div className="prose prose-lg max-w-none space-y-4">
         {lines.map((line, index) => {
           if (line.trim() === '') {
@@ -172,25 +249,43 @@ export function DocumentRenderer({ document, documents, onSelectDocument }: Docu
           }
           
           if (line.startsWith('# ')) {
+            const text = line.substring(2)
+            const id = slugify(text)
             return (
-              <h1 key={index} className="text-3xl font-semibold mt-8 mb-4 tracking-tight">
-                {line.substring(2)}
+              <h1
+                key={index}
+                id={id}
+                className="text-3xl font-semibold mt-8 mb-4 tracking-tight scroll-mt-20"
+              >
+                {text}
               </h1>
             )
           }
           
           if (line.startsWith('## ')) {
+            const text = line.substring(3)
+            const id = slugify(text)
             return (
-              <h2 key={index} className="text-2xl font-semibold mt-6 mb-3 tracking-tight">
-                {line.substring(3)}
+              <h2
+                key={index}
+                id={id}
+                className="text-2xl font-semibold mt-6 mb-3 tracking-tight scroll-mt-20"
+              >
+                {text}
               </h2>
             )
           }
           
           if (line.startsWith('### ')) {
+            const text = line.substring(4)
+            const id = slugify(text)
             return (
-              <h3 key={index} className="text-xl font-medium mt-5 mb-2 tracking-tight">
-                {line.substring(4)}
+              <h3
+                key={index}
+                id={id}
+                className="text-xl font-medium mt-5 mb-2 tracking-tight scroll-mt-20"
+              >
+                {text}
               </h3>
             )
           }

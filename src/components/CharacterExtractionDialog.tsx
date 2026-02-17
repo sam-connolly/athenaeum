@@ -106,12 +106,7 @@ Return the result as a valid JSON object with a single property called "characte
     
     const newDocuments = selectedChars.map((char) => ({
       title: char.name,
-      content: `# ${char.name}
-
-${char.role ? `**Role:** ${char.role}\n\n` : ''}**Description:** ${char.description}
-
-${char.relevantContent ? `## Relevant Information\n\n${char.relevantContent}\n\n` : ''}## Source
-From: [[${documentTitle}]]`,
+      content: `${char.role ? `## Role\n\n${char.role}\n\n` : ''}## Description\n\n${char.description}${char.relevantContent ? `\n\n## Additional Information\n\n${char.relevantContent}` : ''}\n\n## Source\n\nExtracted from: ${documentTitle}`,
     }))
 
     onCharactersCreated(newDocuments)
