@@ -1,67 +1,67 @@
 import { useState } from 'react'
-import { Checkbox } from '@/components/ui/checkbox'
+import {
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { ScrollArea } from '@/components/ui/scroll-area'
-import { toast } from 'sonner'
-
-interface ExtractedCharacter {
-  name: string
   role?: string
-  description: string
   relevantContent: string
-}
 
-interface CharacterExtractionDialogProps {
   open: boolean
-  onOpenChange: (open: boolean) => void
   documentContent: string
-  documentTitle: string
-  onCharactersCreated: (characters: Array<{ title: string; content: string }>) => void
-}
 
-export function CharacterExtractionDialog({
+
   open,
-  onOpenChange,
-  documentContent,
-  documentTitle,
-  onCharactersCreated,
-}: CharacterExtractionDialogProps) {
-  const [isScanning, setIsScanning] = useState(false)
-  const [hasScanned, setHasScanned] = useState(false)
-  const [characters, setCharacters] = useState<ExtractedCharacter[]>([])
-  const [selectedCharacters, setSelectedCharacters] = useState<Set<string>>(new Set())
+  documentConte
+  onCharactersCreated
+  const [isScanning, setI
+ 
 
-  const handleScanForCharacters = async () => {
     setIsScanning(true)
-    
     try {
-      const promptText = `You are analyzing a Warhammer 40k document to extract character information.
 
-Document title: ${documentTitle}
 Document content:
-${documentContent}
 
-Extract all characters mentioned in this document. For each character, provide:
 1. Their name
-2. Their role or title (if mentioned)
-3. A detailed description (2-3 paragraphs)
-4. Relevant content/quotes from the document about them
+3
 
-Return a JSON object with a "characters" property containing an array of character objects:
 {
-  "characters": [
     {
-      "name": "character name",
-      "role": "role/title (optional)",
-      "description": "detailed description",
+      "role": "
+      "relevantCon
+  ]
+
+
+      const parsedData = JSON.parse(response)
+      if (!parsedData.characters || parsedData.charac
+        setHasScanned(true)
+        return
+
+      setHasScanned(true)
+    } catch (error) {
+    
+      set
+  }
+
+      const newSet = new Set(pre
+        newSet.de
+        newSet.add
+
+  }
+  const handl
+    
+      let content = `# ${character.name}\n
+      if (character.role) {
+
+      content += `## Description\n\n${character.description}\n\n`
+ 
+      }
+     
+      return {
+        content,
+    })
       "relevantContent": "relevant quotes or information from the document"
     }
   ]
@@ -69,7 +69,7 @@ Return a JSON object with a "characters" property containing an array of charact
 
 Only extract actual named characters, not generic references.`
 
-      const response = await window.spark.llm(promptText, 'gpt-4o', true)
+      const response = await spark.llm(prompt, 'gpt-4o', true)
       const parsedData = JSON.parse(response)
 
       if (!parsedData.characters || parsedData.characters.length === 0) {
@@ -126,7 +126,7 @@ Only extract actual named characters, not generic references.`
       }
     })
     
-    onCharactersCreated(characterPages)
+                                  {char
     onOpenChange(false)
     setHasScanned(false)
     setCharacters([])
@@ -136,21 +136,21 @@ Only extract actual named characters, not generic references.`
   const handleOpenChange = (newOpen: boolean) => {
     if (!newOpen) {
       setHasScanned(false)
-      setCharacters([])
+                      <
       setSelectedCharacters(new Set())
     }
     onOpenChange(newOpen)
-  }
+   
 
-  return (
+          
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh]">
         <DialogHeader>
-          <DialogTitle>Extract Characters</DialogTitle>
+      </DialogContent>
           <DialogDescription>
             Scan this document for characters and create individual wiki pages for them.
           </DialogDescription>
-        </DialogHeader>
+
 
         <ScrollArea className="max-h-[calc(90vh-200px)]">
           <div className="space-y-4 py-4 pr-4">
@@ -162,13 +162,13 @@ Only extract actual named characters, not generic references.`
               >
                 {isScanning ? 'Scanning...' : 'Scan for Characters'}
               </Button>
-            ) : (
+
               <>
-                {characters.length === 0 ? (
+
                   <p className="text-sm text-muted-foreground text-center py-8">
                     No characters found in this document.
                   </p>
-                ) : (
+
                   <>
                     <p className="text-sm text-muted-foreground">
                       Select characters to create wiki pages:
@@ -184,7 +184,7 @@ Only extract actual named characters, not generic references.`
                             checked={selectedCharacters.has(character.name)}
                             onCheckedChange={() => toggleCharacter(character.name)}
                             onClick={(e) => e.stopPropagation()}
-                          />
+
                           <div className="flex-1">
                             <div className="flex items-center gap-2">
                               <p className="font-medium">{character.name}</p>
@@ -206,21 +206,21 @@ Only extract actual named characters, not generic references.`
                       <Button variant="outline" onClick={() => handleOpenChange(false)} className="flex-1">
                         Cancel
                       </Button>
-                      <Button
+
                         onClick={handleCreateCharacters}
-                        disabled={selectedCharacters.size === 0}
+
                         className="flex-1"
                       >
                         Create {selectedCharacters.size} Character{selectedCharacters.size !== 1 ? 's' : ''}
-                      </Button>
+
                     </div>
-                  </>
+
                 )}
               </>
             )}
-          </div>
+
         </ScrollArea>
-      </DialogContent>
+
     </Dialog>
-  )
+
 }
