@@ -149,6 +149,8 @@ Parse this document and extract:
 1. Faction information (name and description)
 2. All characters mentioned (name, role, description, and any battles they participated in)
 
+CRITICAL: You MUST respond with ONLY valid JSON. Do not include any explanatory text, markdown formatting, or code blocks. Return ONLY the raw JSON object.
+
 Return the result as a JSON object with this structure:
 {
   "faction": {

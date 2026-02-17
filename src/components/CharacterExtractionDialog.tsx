@@ -66,6 +66,8 @@ Extract all named characters from this document. For each character, provide:
 3. Their role or title (if mentioned)
 4. Relevant quotes or information about them
 
+CRITICAL: You MUST respond with ONLY valid JSON. Do not include any explanatory text, markdown formatting, or code blocks. Return ONLY the raw JSON object.
+
 Return the result as a valid JSON object with a single property called "characters" that contains the character list. Use this exact format:
 {
   "characters": [
@@ -76,7 +78,9 @@ Return the result as a valid JSON object with a single property called "characte
       "relevantContent": "relevant quotes or information (optional)"
     }
   ]
-}`
+}
+
+If no characters are found, return: {"characters": []}`
 
       let response: string
       try {
