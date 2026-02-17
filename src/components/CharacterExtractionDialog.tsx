@@ -1,19 +1,19 @@
 import { useState } from 'react'
 import {
-  DialogD
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
   DialogTitle,
-import { Button } fr
-import { Checkb
-import { toast
+} from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Badge } from '@/components/ui/badge'
+import { ScrollArea } from '@/components/ui/scroll-area'
+import { toast } from 'sonner'
+
 interface Character {
-  description: string
-  relevantContent?: string
-
-  open: boolean
-  documentContent: string
-
-
-  open,
+  name: string
   description: string
   role?: string
   relevantContent?: string
@@ -30,7 +30,7 @@ interface CharacterExtractionDialogProps {
 export function CharacterExtractionDialog({
   open,
   onOpenChange,
-
+  documentContent,
   documentTitle,
   onCharactersCreated,
 }: CharacterExtractionDialogProps) {
@@ -40,92 +40,87 @@ export function CharacterExtractionDialog({
   const [selectedCharacters, setSelectedCharacters] = useState<Set<string>>(new Set())
 
   const handleScanForCharacters = async () => {
-    }
+    setIsScanning(true)
     try {
       const prompt = spark.llmPrompt`You are analyzing a document to extract character information.
 
-      const respo
+Document title: ${documentTitle}
+Document content:
 ${documentContent}
 
 Extract all named characters from this document. For each character, provide:
-        setIs
+1. Their name
 2. A brief description
-
+3. Their role or title (if mentioned)
 4. Relevant quotes or information about them
 
 Return the result as a valid JSON object with a single property called "characters" that contains the character list. Use this exact format:
 {
   "characters": [
-    }
+    {
       "name": "Character Name",
       "description": "brief description of the character",
       "role": "their role or title (optional)",
-    })
-    o
-   
- 
+      "relevantContent": "relevant quotes or information (optional)"
+    }
+  ]
+}`
 
-    if (!newOpen) {
-
+      const response = await spark.llm(prompt, 'gpt-4o', true)
+      const result = JSON.parse(response)
+      
+      if (result.characters && Array.isArray(result.characters)) {
+        setCharacters(result.characters)
+        setHasScanned(true)
+        
+        if (result.characters.length === 0) {
+          toast.info('No characters found in this document')
+        } else {
+          toast.success(`Found ${result.characters.length} character${result.characters.length !== 1 ? 's' : ''}`)
+        }
+      } else {
+        throw new Error('Invalid response format')
+      }
+    } catch (error) {
+      toast.error('Failed to scan for characters')
+      console.error('Character extraction error:', error)
+    } finally {
+      setIsScanning(false)
     }
   }
 
-      <DialogContent className="max-w-2xl max-h-[90vh]">
-          <DialogTitle>Extract Characters</DialogTitle>
-            Scan this docum
-        </DialogHeader>
-        <Scrol
-       
-
-                className="w-full"
-                {isScanni
-            ) : (
-                {char
-                    No characters found in this do
-                ) : (
-               
-                    </p>
-     
-   
-
-                          <Checkbox
-                            onChecked
-                          />
-                            <div class
-                              {chara
-              
-                              )}
-       
-                   
+  const toggleCharacter = (name: string) => {
+    setSelectedCharacters((prev) => {
+      const newSet = new Set(prev)
+      if (newSet.has(name)) {
+        newSet.delete(name)
+      } else {
+        newSet.add(name)
+      }
+      return newSet
     })
-   
+  }
 
-                        Cancel
-                      <Button
+  const handleCreateCharacters = () => {
+    const selectedChars = characters.filter((char) => selectedCharacters.has(char.name))
     
-                      >
-                      </Button>
-      
-              </>
-          </div>
-      <
-  )
+    const newDocuments = selectedChars.map((char) => ({
+      title: char.name,
+      content: `# ${char.name}
 
+${char.role ? `**Role:** ${char.role}\n\n` : ''}**Description:** ${char.description}
 
+${char.relevantContent ? `## Relevant Information\n\n${char.relevantContent}\n\n` : ''}## Source
+From: [[${documentTitle}]]`,
+    }))
 
-
-
-
-
-
-
-
-
-
-
-
-
+    onCharactersCreated(newDocuments)
+    toast.success(`Created ${newDocuments.length} character page${newDocuments.length !== 1 ? 's' : ''}`)
+    handleReset()
     onOpenChange(false)
+  }
+
+  const handleReset = () => {
     setHasScanned(false)
     setCharacters([])
     setSelectedCharacters(new Set())
@@ -133,22 +128,20 @@ Return the result as a valid JSON object with a single property called "characte
 
   const handleOpenChange = (newOpen: boolean) => {
     if (!newOpen) {
-      setHasScanned(false)
-
-      setSelectedCharacters(new Set())
+      handleReset()
     }
     onOpenChange(newOpen)
+  }
 
-
-
+  return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh]">
         <DialogHeader>
-
+          <DialogTitle>Extract Characters</DialogTitle>
           <DialogDescription>
             Scan this document for characters and create individual wiki pages for them.
           </DialogDescription>
-
+        </DialogHeader>
 
         <ScrollArea className="max-h-[calc(90vh-200px)]">
           <div className="space-y-4 py-4 pr-4">
@@ -160,13 +153,13 @@ Return the result as a valid JSON object with a single property called "characte
               >
                 {isScanning ? 'Scanning...' : 'Scan for Characters'}
               </Button>
-
+            ) : (
               <>
-
+                {characters.length === 0 ? (
                   <p className="text-sm text-muted-foreground text-center py-8">
                     No characters found in this document.
                   </p>
-
+                ) : (
                   <>
                     <p className="text-sm text-muted-foreground">
                       Select characters to create wiki pages:
@@ -182,7 +175,7 @@ Return the result as a valid JSON object with a single property called "characte
                             checked={selectedCharacters.has(character.name)}
                             onCheckedChange={() => toggleCharacter(character.name)}
                             onClick={(e) => e.stopPropagation()}
-
+                          />
                           <div className="flex-1">
                             <div className="flex items-center gap-2">
                               <p className="font-medium">{character.name}</p>
@@ -204,21 +197,21 @@ Return the result as a valid JSON object with a single property called "characte
                       <Button variant="outline" onClick={() => handleOpenChange(false)} className="flex-1">
                         Cancel
                       </Button>
-
+                      <Button
                         onClick={handleCreateCharacters}
-
+                        disabled={selectedCharacters.size === 0}
                         className="flex-1"
                       >
                         Create {selectedCharacters.size} Character{selectedCharacters.size !== 1 ? 's' : ''}
-
+                      </Button>
                     </div>
-
+                  </>
                 )}
               </>
             )}
-
+          </div>
         </ScrollArea>
-
+      </DialogContent>
     </Dialog>
-
+  )
 }
