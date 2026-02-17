@@ -5,6 +5,5 @@ declare const BASE_KV_SERVICE_URL: string
 interface Window {
   spark: {
     llm(prompt: string, model: string, json: boolean): Promise<string>
-    llmPrompt(strings: TemplateStringsArray, ...values: any[]): string
   }
 }

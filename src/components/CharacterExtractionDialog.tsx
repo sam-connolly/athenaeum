@@ -54,7 +54,7 @@ export function CharacterExtractionDialog({
         return
       }
 
-      const prompt = window.spark.llmPrompt`You are analyzing a document to extract character information.
+      const prompt = `You are analyzing a document to extract character information.
 
 Document title: ${documentTitle}
 Document content:
@@ -66,9 +66,14 @@ Extract all named characters from this document. For each character, provide:
 3. Their role or title (if mentioned)
 4. Relevant quotes or information about them
 
-CRITICAL: You MUST respond with ONLY valid JSON. Do not include any explanatory text, markdown formatting, or code blocks. Return ONLY the raw JSON object.
+CRITICAL INSTRUCTIONS:
+- You MUST respond with ONLY a valid JSON object
+- Do NOT include any explanatory text before or after the JSON
+- Do NOT use markdown formatting or code blocks
+- Do NOT include triple backticks
+- Return ONLY raw JSON, nothing else
 
-Return the result as a valid JSON object with a single property called "characters" that contains the character list. Use this exact format:
+Return the result as a valid JSON object with this exact structure:
 {
   "characters": [
     {
@@ -102,6 +107,7 @@ If no characters are found, return: {"characters": []}`
 
       let cleanedResponse = response.trim()
       
+      // Remove markdown code blocks if present
       if (cleanedResponse.startsWith('```json')) {
         cleanedResponse = cleanedResponse.replace(/^```json\s*/, '').replace(/\s*```$/, '')
       } else if (cleanedResponse.startsWith('```')) {
@@ -109,14 +115,24 @@ If no characters are found, return: {"characters": []}`
       }
       
       cleanedResponse = cleanedResponse.trim()
+      
+      // Try to extract JSON if it's embedded in text
+      if (!cleanedResponse.startsWith('{')) {
+        const jsonMatch = cleanedResponse.match(/\{[\s\S]*\}/)
+        if (jsonMatch) {
+          cleanedResponse = jsonMatch[0]
+        }
+      }
 
       let result: { characters?: Character[] }
       try {
         result = JSON.parse(cleanedResponse)
       } catch (parseError) {
         const errorMsg = parseError instanceof Error ? parseError.message : 'Invalid JSON'
-        toast.error(`Failed to parse AI response: ${errorMsg}. Response was not valid JSON format.`)
-        console.error('Character extraction JSON parse error:', parseError, 'Original response:', response.substring(0, 500), 'Cleaned response:', cleanedResponse.substring(0, 500))
+        console.error('Character extraction JSON parse error:', parseError)
+        console.error('Original response:', response.substring(0, 500))
+        console.error('Cleaned response:', cleanedResponse.substring(0, 500))
+        toast.error(`Failed to parse AI response: ${errorMsg}. The AI may not have returned valid JSON.`)
         setIsScanning(false)
         return
       }
