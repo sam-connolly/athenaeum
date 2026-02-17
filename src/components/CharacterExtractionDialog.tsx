@@ -1,67 +1,65 @@
 import { useState } from 'react'
 import {
-import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
+} from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
+import { ScrollArea } from '@/components/ui/scroll-area'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Badge } from '@/components/ui/badge'
+import { toast } from 'sonner'
+
+interface Character {
+  name: string
+  description: string
   role?: string
-  relevantContent: string
+  relevantContent?: string
+}
 
+interface CharacterExtractionDialogProps {
   open: boolean
+  onOpenChange: (open: boolean) => void
   documentContent: string
+  documentTitle: string
+  onCharactersCreated: (characters: Array<{ title: string; content: string }>) => void
+}
 
-
+export function CharacterExtractionDialog({
   open,
-  documentConte
-  onCharactersCreated
-  const [isScanning, setI
- 
+  onOpenChange,
+  documentContent,
+  documentTitle,
+  onCharactersCreated,
+}: CharacterExtractionDialogProps) {
+  const [isScanning, setIsScanning] = useState(false)
+  const [hasScanned, setHasScanned] = useState(false)
+  const [characters, setCharacters] = useState<Character[]>([])
+  const [selectedCharacters, setSelectedCharacters] = useState<Set<string>>(new Set())
 
+  const handleScanForCharacters = async () => {
     setIsScanning(true)
     try {
+      const prompt = spark.llmPrompt`You are analyzing a document to extract character information.
 
 Document content:
+${documentContent}
 
+Extract all named characters from this document. For each character, provide:
 1. Their name
-3
+2. A brief description
+3. Their role (if mentioned)
+4. Relevant quotes or information about them
 
+Return the result as a valid JSON object with a single property called "characters" that contains the character list. Use this exact format:
 {
+  "characters": [
     {
-      "role": "
-      "relevantCon
-  ]
-
-
-      const parsedData = JSON.parse(response)
-      if (!parsedData.characters || parsedData.charac
-        setHasScanned(true)
-        return
-
-      setHasScanned(true)
-    } catch (error) {
-    
-      set
-  }
-
-      const newSet = new Set(pre
-        newSet.de
-        newSet.add
-
-  }
-  const handl
-    
-      let content = `# ${character.name}\n
-      if (character.role) {
-
-      content += `## Description\n\n${character.description}\n\n`
- 
-      }
-     
-      return {
-        content,
-    })
+      "name": "Character Name",
+      "description": "brief description of the character",
+      "role": "their role or title (optional)",
       "relevantContent": "relevant quotes or information from the document"
     }
   ]
@@ -126,7 +124,7 @@ Only extract actual named characters, not generic references.`
       }
     })
     
-                                  {char
+    onCharactersCreated(characterPages)
     onOpenChange(false)
     setHasScanned(false)
     setCharacters([])
@@ -136,21 +134,21 @@ Only extract actual named characters, not generic references.`
   const handleOpenChange = (newOpen: boolean) => {
     if (!newOpen) {
       setHasScanned(false)
-                      <
+      setCharacters([])
       setSelectedCharacters(new Set())
     }
     onOpenChange(newOpen)
-   
+  }
 
-          
+  return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh]">
         <DialogHeader>
-      </DialogContent>
+          <DialogTitle>Extract Characters</DialogTitle>
           <DialogDescription>
             Scan this document for characters and create individual wiki pages for them.
           </DialogDescription>
-
+        </DialogHeader>
 
         <ScrollArea className="max-h-[calc(90vh-200px)]">
           <div className="space-y-4 py-4 pr-4">
@@ -162,13 +160,13 @@ Only extract actual named characters, not generic references.`
               >
                 {isScanning ? 'Scanning...' : 'Scan for Characters'}
               </Button>
-
+            ) : (
               <>
-
+                {characters.length === 0 ? (
                   <p className="text-sm text-muted-foreground text-center py-8">
                     No characters found in this document.
                   </p>
-
+                ) : (
                   <>
                     <p className="text-sm text-muted-foreground">
                       Select characters to create wiki pages:
@@ -184,7 +182,7 @@ Only extract actual named characters, not generic references.`
                             checked={selectedCharacters.has(character.name)}
                             onCheckedChange={() => toggleCharacter(character.name)}
                             onClick={(e) => e.stopPropagation()}
-
+                          />
                           <div className="flex-1">
                             <div className="flex items-center gap-2">
                               <p className="font-medium">{character.name}</p>
@@ -206,21 +204,21 @@ Only extract actual named characters, not generic references.`
                       <Button variant="outline" onClick={() => handleOpenChange(false)} className="flex-1">
                         Cancel
                       </Button>
-
+                      <Button
                         onClick={handleCreateCharacters}
-
+                        disabled={selectedCharacters.size === 0}
                         className="flex-1"
                       >
                         Create {selectedCharacters.size} Character{selectedCharacters.size !== 1 ? 's' : ''}
-
+                      </Button>
                     </div>
-
+                  </>
                 )}
               </>
             )}
-
+          </div>
         </ScrollArea>
-
+      </DialogContent>
     </Dialog>
-
+  )
 }
