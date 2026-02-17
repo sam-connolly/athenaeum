@@ -39,6 +39,73 @@ export function CharacterExtractionDialog({
   const [characters, setCharacters] = useState<Character[]>([])
   const [selectedCharacters, setSelectedCharacters] = useState<Set<string>>(new Set())
 
+  // Helper function to fetch with retries
+  const fetchWithRetries = async (prompt: string, maxRetries: number = 3): Promise<string> => {
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        const response = await window.spark.llm(prompt, 'gpt-4o', true)
+        return response
+      } catch (error) {
+        if (attempt === maxRetries) {
+          throw error
+        }
+        // Exponential backoff: 1s, 2s, 4s
+        const delay = Math.pow(2, attempt - 1) * 1000
+        await new Promise(resolve => setTimeout(resolve, delay))
+      }
+    }
+    throw new Error('Max retries exceeded')
+  }
+
+  // Helper function to parse JSON with retries
+  const parseJSONWithRetries = async (rawResponse: string, prompt: string, maxRetries: number = 3) => {
+    let lastError: Error | null = null
+    
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      let cleanedResponse = rawResponse.trim()
+      
+      // Remove markdown code blocks if present
+      if (cleanedResponse.startsWith('```json')) {
+        cleanedResponse = cleanedResponse.replace(/^```json\s*/, '').replace(/\s*```$/, '')
+      } else if (cleanedResponse.startsWith('```')) {
+        cleanedResponse = cleanedResponse.replace(/^```\s*/, '').replace(/\s*```$/, '')
+      }
+      
+      cleanedResponse = cleanedResponse.trim()
+      
+      // Try to extract JSON if it's embedded in text
+      if (!cleanedResponse.startsWith('{')) {
+        const jsonMatch = cleanedResponse.match(/\{[\s\S]*\}/)
+        if (jsonMatch) {
+          cleanedResponse = jsonMatch[0]
+        }
+      }
+      
+      try {
+        const result = JSON.parse(cleanedResponse)
+        return result
+      } catch (parseError) {
+        lastError = parseError instanceof Error ? parseError : new Error('Unknown parse error')
+        console.error(`Parse attempt ${attempt} failed:`, lastError.message)
+        console.error('Response:', rawResponse.substring(0, 300))
+        
+        // If it's the last retry, don't retry the LLM
+        if (attempt < maxRetries) {
+          console.log(`Retrying AI request (attempt ${attempt + 1}/${maxRetries})...`)
+          try {
+            const retryResponse = await fetchWithRetries(prompt, 1) // Single attempt per retry
+            rawResponse = retryResponse
+          } catch (retryError) {
+            lastError = retryError instanceof Error ? retryError : new Error('Retry failed')
+            // Continue to next iteration to try parsing again or reach max retries
+          }
+        }
+      }
+    }
+    
+    throw lastError || new Error('Failed to parse JSON after all retries')
+  }
+
   const handleScanForCharacters = async () => {
     setIsScanning(true)
     try {
@@ -62,77 +129,62 @@ ${documentContent}
 
 Extract all named characters from this document. For each character, provide:
 1. Their name
-2. A brief description
+2. A brief description (IMPORTANT: keep to 1-2 sentences, replace newlines with spaces)
 3. Their role or title (if mentioned)
-4. Relevant quotes or information about them
+4. Relevant quotes or information (IMPORTANT: keep to 1-2 sentences, replace newlines with spaces)
 
-CRITICAL INSTRUCTIONS:
-- You MUST respond with ONLY a valid JSON object
-- Do NOT include any explanatory text before or after the JSON
-- Do NOT use markdown formatting or code blocks
-- Do NOT include triple backticks
-- Return ONLY raw JSON, nothing else
+CRITICAL FORMATTING INSTRUCTIONS - YOU MUST FOLLOW THESE EXACTLY:
+- Return ONLY a valid JSON object - absolutely nothing else
+- Do NOT include any explanatory text, preamble, markdown, or code blocks
+- Do NOT use triple backticks or any formatting
+- Escape all quotes in values as \"
+- Replace all newlines with spaces (not \n, use actual spaces)
+- Use only double quotes, never single quotes
+- Ensure every string value is properly closed with a quote
+- Validate the JSON before returning it
 
 Return the result as a valid JSON object with this exact structure:
 {
   "characters": [
     {
       "name": "Character Name",
-      "description": "brief description of the character",
-      "role": "their role or title (optional)",
-      "relevantContent": "relevant quotes or information (optional)"
+      "description": "brief description of the character, single line",
+      "role": "their role or title, single line",
+      "relevantContent": "relevant quotes or information, single line"
     }
   ]
 }
 
-If no characters are found, return: {"characters": []}`
+If no characters are found, return: {"characters": []}
+
+REMINDER: Return ONLY the JSON. Zero other text. No explanations. Just valid JSON.`
 
       let response: string
       try {
-        response = await window.spark.llm(prompt, 'gpt-4o', true)
+        response = await fetchWithRetries(prompt, 3)
       } catch (llmError) {
         const errorMsg = llmError instanceof Error ? llmError.message : 'Unknown error'
-        toast.error(`AI request failed: ${errorMsg}. Please check your connection and try again.`)
+        toast.error(`AI request failed after 3 retries: ${errorMsg}. Please check your connection and try again.`)
         console.error('Character extraction LLM error:', llmError)
         setIsScanning(false)
         return
       }
 
       if (!response || response.trim().length === 0) {
-        toast.error('AI returned empty response. This may be a temporary issue. Please try again.')
+        toast.error('AI returned empty response. Please try again.')
         console.error('Character extraction error: Empty LLM response')
         setIsScanning(false)
         return
       }
 
-      let cleanedResponse = response.trim()
-      
-      // Remove markdown code blocks if present
-      if (cleanedResponse.startsWith('```json')) {
-        cleanedResponse = cleanedResponse.replace(/^```json\s*/, '').replace(/\s*```$/, '')
-      } else if (cleanedResponse.startsWith('```')) {
-        cleanedResponse = cleanedResponse.replace(/^```\s*/, '').replace(/\s*```$/, '')
-      }
-      
-      cleanedResponse = cleanedResponse.trim()
-      
-      // Try to extract JSON if it's embedded in text
-      if (!cleanedResponse.startsWith('{')) {
-        const jsonMatch = cleanedResponse.match(/\{[\s\S]*\}/)
-        if (jsonMatch) {
-          cleanedResponse = jsonMatch[0]
-        }
-      }
-
       let result: { characters?: Character[] }
       try {
-        result = JSON.parse(cleanedResponse)
+        result = await parseJSONWithRetries(response, prompt, 3)
       } catch (parseError) {
         const errorMsg = parseError instanceof Error ? parseError.message : 'Invalid JSON'
-        console.error('Character extraction JSON parse error:', parseError)
+        console.error('Character extraction JSON parse error after all retries:', parseError)
         console.error('Original response:', response.substring(0, 500))
-        console.error('Cleaned response:', cleanedResponse.substring(0, 500))
-        toast.error(`Failed to parse AI response: ${errorMsg}. The AI may not have returned valid JSON.`)
+        toast.error(`Failed to parse AI response after 3 retries: ${errorMsg}. Please try with a different document.`)
         setIsScanning(false)
         return
       }
