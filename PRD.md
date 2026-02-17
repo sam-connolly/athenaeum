@@ -26,6 +26,13 @@ This application manages document imports, displays content with formatting, and
 - **Progression**: Click import → Enter Google Drive URL → Validate URL → Fetch content → Parse text → Display success message → Document appears in sidebar
 - **Success criteria**: Document content is successfully retrieved and stored, appears in navigation, and renders properly
 
+### AI Character Extraction
+- **Functionality**: After importing a document, use AI to scan the content and extract all named characters mentioned, presenting them for user review and automatic page creation
+- **Purpose**: Automates the tedious process of manually creating character pages from narrative documents, ensuring comprehensive coverage
+- **Trigger**: Automatically opens after a document is imported (Google Drive or manual)
+- **Progression**: Import document → AI scans content → Extracted characters displayed in review dialog → User selects/deselects characters → Click "Create Pages" → Character pages created with relevant content → All pages added to wiki
+- **Success criteria**: AI accurately identifies characters, extracted content is relevant, user can review and select which characters to create, generated pages are well-formatted with character name, role, description, and relevant content
+
 ### Document Rendering
 - **Functionality**: Display imported text documents with proper formatting, headings, paragraphs, and basic markdown support
 - **Purpose**: Make documents readable and well-structured for knowledge consumption
@@ -55,6 +62,11 @@ This application manages document imports, displays content with formatting, and
 - **Success criteria**: Documents can be renamed, deleted, and the changes persist
 
 ## Edge Case Handling
+- **AI Character Extraction - No Characters Found**: Display friendly message when no named characters are detected, allow user to skip character extraction and just import document
+- **AI Character Extraction - Network Error**: Show error toast if AI service fails, allow user to retry or skip and just import the document
+- **Character Pages with Same Name**: Generate unique IDs for all pages to prevent collisions if multiple characters share names
+- **Empty Character Descriptions**: Ensure all extracted characters have meaningful content, filter out low-quality extractions
+- **User Deselects All Characters**: Allow skipping character creation entirely, only import the source document
 - **No Entities State**: Display empty state messages for each entity type (factions, battles, characters) with prompts to add first entry
 - **Orphaned Characters**: When deleting a faction, clear the factionId for affected characters rather than deleting them
 - **Battle Cleanup**: When deleting a battle, remove battle ID from all characters' battleIds arrays
@@ -125,6 +137,8 @@ Animations should be subtle and purposeful, reinforcing hierarchy and spatial re
 - **Icon Selection**: 
   - `FileText` for documents in sidebar
   - `Plus` or `Upload` for import action
+  - `Sparkle` for AI features (character extraction, smart import)
+  - `User` for character-related features
   - `MagnifyingGlass` for search
   - `Pencil` for edit actions
   - `Trash` for delete
