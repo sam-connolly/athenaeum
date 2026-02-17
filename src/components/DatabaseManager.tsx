@@ -71,65 +71,127 @@ export function DatabaseManager() {
   const [selectedBattles, setSelectedBattles] = useState<string[]>([])
 
   const handleExportDatabase = () => {
-    downloadDatabaseAsJson(database)
-    toast.success('Database exported successfully')
+    try {
+      if (!database || (database.factions.length === 0 && database.battles.length === 0 && database.characters.length === 0)) {
+        toast.error('Database is empty. Cannot export an empty database.')
+        return
+      }
+
+      downloadDatabaseAsJson(database)
+      toast.success(`Database exported successfully (${database.factions.length} factions, ${database.battles.length} battles, ${database.characters.length} characters)`)
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : 'Unknown error'
+      toast.error(`Failed to export database: ${errorMsg}`)
+      console.error('Export database error:', error)
+    }
   }
   const handleAddFaction = () => {
     if (!formData.name.trim()) {
-      toast.error('Faction name is required')
+      toast.error('Faction name is required. Please enter a name for the faction.')
       return
     }
 
-    addFaction({
-      name: formData.name,
-      description: formData.description,
-    })
+    if (formData.name.trim().length < 2) {
+      toast.error(`Faction name is too short (${formData.name.trim().length} characters). Please provide at least 2 characters.`)
+      return
+    }
 
-    toast.success('Faction added successfully')
-    resetForm()
-    setOpen(false)
+    const existingFaction = factions.find(f => f.name.toLowerCase() === formData.name.trim().toLowerCase())
+    if (existingFaction) {
+      toast.error(`Faction "${formData.name.trim()}" already exists. Please use a different name or edit the existing faction.`)
+      return
+    }
+
+    try {
+      addFaction({
+        name: formData.name,
+        description: formData.description,
+      })
+
+      toast.success(`Faction "${formData.name.trim()}" added successfully`)
+      resetForm()
+      setOpen(false)
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : 'Unknown error'
+      toast.error(`Failed to add faction: ${errorMsg}`)
+      console.error('Add faction error:', error)
+    }
   }
 
   const handleAddBattle = () => {
     if (!formData.name.trim()) {
-      toast.error('Battle name is required')
+      toast.error('Battle name is required. Please enter a name for the battle.')
       return
     }
 
-    addBattle({
-      name: formData.name,
-      description: formData.description,
-      date: formData.date,
-      location: formData.location,
-    })
+    if (formData.name.trim().length < 2) {
+      toast.error(`Battle name is too short (${formData.name.trim().length} characters). Please provide at least 2 characters.`)
+      return
+    }
 
-    toast.success('Battle added successfully')
-    resetForm()
-    setOpen(false)
+    const existingBattle = battles.find(b => b.name.toLowerCase() === formData.name.trim().toLowerCase())
+    if (existingBattle) {
+      toast.error(`Battle "${formData.name.trim()}" already exists. Please use a different name or edit the existing battle.`)
+      return
+    }
+
+    try {
+      addBattle({
+        name: formData.name,
+        description: formData.description,
+        date: formData.date,
+        location: formData.location,
+      })
+
+      toast.success(`Battle "${formData.name.trim()}" added successfully`)
+      resetForm()
+      setOpen(false)
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : 'Unknown error'
+      toast.error(`Failed to add battle: ${errorMsg}`)
+      console.error('Add battle error:', error)
+    }
   }
 
   const handleAddCharacter = () => {
     if (!formData.name.trim()) {
-      toast.error('Character name is required')
+      toast.error('Character name is required. Please enter a name for the character.')
+      return
+    }
+
+    if (formData.name.trim().length < 2) {
+      toast.error(`Character name is too short (${formData.name.trim().length} characters). Please provide at least 2 characters.`)
       return
     }
 
     if (!formData.factionId) {
-      toast.error('Please select a faction')
+      toast.error('Faction is required. Please select a faction for this character.')
       return
     }
 
-    addCharacter({
-      name: formData.name,
-      factionId: formData.factionId,
-      battleIds: selectedBattles,
-      role: formData.role,
-      description: formData.description,
-    })
+    const existingCharacter = characters.find(c => c.name.toLowerCase() === formData.name.trim().toLowerCase())
+    if (existingCharacter) {
+      toast.error(`Character "${formData.name.trim()}" already exists. Please use a different name or edit the existing character.`)
+      return
+    }
 
-    toast.success('Character added successfully')
-    resetForm()
-    setOpen(false)
+    try {
+      addCharacter({
+        name: formData.name,
+        factionId: formData.factionId,
+        battleIds: selectedBattles,
+        role: formData.role,
+        description: formData.description,
+      })
+
+      toast.success(`Character "${formData.name.trim()}" added successfully`)
+      resetForm()
+      setOpen(false)
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : 'Unknown error'
+      toast.error(`Failed to add character: ${errorMsg}`)
+      console.error('Add character error:', error)
+    }
   }
 
   const resetForm = () => {
@@ -138,25 +200,37 @@ export function DatabaseManager() {
   }
 
   const handleDelete = () => {
-    if (!deleteTarget) return
-
-    switch (deleteTarget.type) {
-      case 'faction':
-        deleteFaction(deleteTarget.id)
-        toast.success('Faction deleted')
-        break
-      case 'battle':
-        deleteBattle(deleteTarget.id)
-        toast.success('Battle deleted')
-        break
-      case 'character':
-        deleteCharacter(deleteTarget.id)
-        toast.success('Character deleted')
-        break
+    if (!deleteTarget) {
+      toast.error('No delete target specified. Please try again.')
+      return
     }
 
-    setDeleteDialogOpen(false)
-    setDeleteTarget(null)
+    try {
+      switch (deleteTarget.type) {
+        case 'faction':
+          deleteFaction(deleteTarget.id)
+          toast.success('Faction deleted successfully')
+          break
+        case 'battle':
+          deleteBattle(deleteTarget.id)
+          toast.success('Battle deleted successfully')
+          break
+        case 'character':
+          deleteCharacter(deleteTarget.id)
+          toast.success('Character deleted successfully')
+          break
+        default:
+          toast.error(`Unknown entity type: ${deleteTarget.type}. Cannot delete.`)
+          return
+      }
+
+      setDeleteDialogOpen(false)
+      setDeleteTarget(null)
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : 'Unknown error'
+      toast.error(`Failed to delete ${deleteTarget.type}: ${errorMsg}`)
+      console.error('Delete error:', error)
+    }
   }
 
   const confirmDelete = (type: string, id: string) => {

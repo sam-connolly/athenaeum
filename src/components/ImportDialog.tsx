@@ -31,7 +31,7 @@ export function ImportDialog({ onImport }: ImportDialogProps) {
 
   const handleImportFromUrl = async () => {
     if (!googleDriveUrl.trim()) {
-      toast.error('Please enter a Google Drive URL')
+      toast.error('Google Drive URL is required. Please enter a valid URL.')
       return
     }
 
@@ -52,38 +52,102 @@ export function ImportDialog({ onImport }: ImportDialogProps) {
       }
 
       if (!fileId) {
-        toast.error('Invalid Google Drive URL format. Example: https://docs.google.com/document/d/FILE_ID/edit')
+        toast.error('Invalid Google Drive URL format. Could not extract file ID. Expected format: https://docs.google.com/document/d/YOUR_FILE_ID/edit')
         setIsLoading(false)
         return
       }
 
       const exportUrl = `https://docs.google.com/document/d/${fileId}/export?format=txt`
       
-      const response = await fetch(exportUrl)
+      let response: Response
+      try {
+        response = await fetch(exportUrl)
+      } catch (fetchError) {
+        const errorMsg = fetchError instanceof Error ? fetchError.message : 'Unknown network error'
+        toast.error(`Network error while fetching document: ${errorMsg}. Check your internet connection.`)
+        console.error('Import fetch error:', fetchError)
+        setIsLoading(false)
+        return
+      }
       
       if (!response.ok) {
-        throw new Error('Failed to fetch document. Make sure the document is publicly accessible.')
+        const statusText = response.statusText || 'Unknown error'
+        if (response.status === 404) {
+          toast.error(`Document not found (404). The file ID may be incorrect or the document may have been deleted.`)
+        } else if (response.status === 403) {
+          toast.error(`Access denied (403). Make sure the document is set to "Anyone with the link can view" in sharing settings.`)
+        } else if (response.status === 401) {
+          toast.error(`Unauthorized (401). The document is not publicly accessible. Update sharing settings to "Anyone with the link can view".`)
+        } else {
+          toast.error(`HTTP ${response.status}: ${statusText}. Failed to fetch document from Google Drive.`)
+        }
+        console.error('Import HTTP error:', response.status, statusText)
+        setIsLoading(false)
+        return
       }
 
-      const text = await response.text()
+      let text: string
+      try {
+        text = await response.text()
+      } catch (textError) {
+        const errorMsg = textError instanceof Error ? textError.message : 'Unknown error'
+        toast.error(`Failed to read document content: ${errorMsg}`)
+        console.error('Import text read error:', textError)
+        setIsLoading(false)
+        return
+      }
+
+      if (!text || text.trim().length === 0) {
+        toast.error('Document is empty. The imported document contains no text content.')
+        setIsLoading(false)
+        return
+      }
+
+      if (text.length < 10) {
+        toast.error(`Document is too short (${text.length} characters). Expected at least 10 characters of content.`)
+        setIsLoading(false)
+        return
+      }
       
       const docTitle = text.split('\n')[0] || 'Imported Document'
       
       setPendingDocument({ title: docTitle.trim(), content: text, sourceUrl: googleDriveUrl })
       setCharacterExtractionOpen(true)
       
-      toast.success('Document imported successfully!')
+      toast.success(`Document imported successfully! (${text.length} characters)`)
       setOpen(false)
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to import document')
+      const errorMsg = error instanceof Error ? error.message : 'Unknown error occurred'
+      toast.error(`Import failed: ${errorMsg}`)
+      console.error('Import unexpected error:', error)
     } finally {
       setIsLoading(false)
     }
   }
 
   const handleManualImport = () => {
-    if (!title.trim() || !content.trim()) {
-      toast.error('Please provide both title and content')
+    if (!title.trim() && !content.trim()) {
+      toast.error('Both title and content are required. Please provide the document title and content.')
+      return
+    }
+    
+    if (!title.trim()) {
+      toast.error('Document title is required. Please provide a title for your document.')
+      return
+    }
+    
+    if (!content.trim()) {
+      toast.error('Document content is required. Please provide content for your document.')
+      return
+    }
+
+    if (title.trim().length < 2) {
+      toast.error(`Title is too short (${title.trim().length} characters). Please provide at least 2 characters.`)
+      return
+    }
+
+    if (content.trim().length < 10) {
+      toast.error(`Content is too short (${content.trim().length} characters). Please provide at least 10 characters.`)
       return
     }
 

@@ -42,6 +42,18 @@ export function CharacterExtractionDialog({
   const handleScanForCharacters = async () => {
     setIsScanning(true)
     try {
+      if (!documentContent || documentContent.trim().length === 0) {
+        toast.error('Cannot scan empty document. Document content is required.')
+        setIsScanning(false)
+        return
+      }
+
+      if (documentContent.length < 50) {
+        toast.error('Document is too short to extract characters. Please provide more content (at least 50 characters).')
+        setIsScanning(false)
+        return
+      }
+
       const prompt = window.spark.llmPrompt`You are analyzing a document to extract character information.
 
 Document title: ${documentTitle}
@@ -66,24 +78,61 @@ Return the result as a valid JSON object with a single property called "characte
   ]
 }`
 
-      const response = await window.spark.llm(prompt, 'gpt-4o', true)
-      const result = JSON.parse(response)
+      let response: string
+      try {
+        response = await window.spark.llm(prompt, 'gpt-4o', true)
+      } catch (llmError) {
+        const errorMsg = llmError instanceof Error ? llmError.message : 'Unknown error'
+        toast.error(`AI request failed: ${errorMsg}. Please check your connection and try again.`)
+        console.error('Character extraction LLM error:', llmError)
+        setIsScanning(false)
+        return
+      }
+
+      if (!response || response.trim().length === 0) {
+        toast.error('AI returned empty response. This may be a temporary issue. Please try again.')
+        console.error('Character extraction error: Empty LLM response')
+        setIsScanning(false)
+        return
+      }
+
+      let result: { characters?: Character[] }
+      try {
+        result = JSON.parse(response)
+      } catch (parseError) {
+        const errorMsg = parseError instanceof Error ? parseError.message : 'Invalid JSON'
+        toast.error(`Failed to parse AI response: ${errorMsg}. Response was not valid JSON format.`)
+        console.error('Character extraction JSON parse error:', parseError, 'Response:', response.substring(0, 500))
+        setIsScanning(false)
+        return
+      }
       
-      if (result.characters && Array.isArray(result.characters)) {
-        setCharacters(result.characters)
-        setHasScanned(true)
-        
-        if (result.characters.length === 0) {
-          toast.info('No characters found in this document')
-        } else {
-          toast.success(`Found ${result.characters.length} character${result.characters.length !== 1 ? 's' : ''}`)
-        }
+      if (!result.characters) {
+        toast.error(`Invalid AI response structure: Missing 'characters' property. Expected format: {characters: [...]}`)
+        console.error('Character extraction error: Missing characters property. Response:', result)
+        setIsScanning(false)
+        return
+      }
+
+      if (!Array.isArray(result.characters)) {
+        toast.error(`Invalid AI response structure: 'characters' is not an array. Type received: ${typeof result.characters}`)
+        console.error('Character extraction error: characters is not an array. Response:', result)
+        setIsScanning(false)
+        return
+      }
+
+      setCharacters(result.characters)
+      setHasScanned(true)
+      
+      if (result.characters.length === 0) {
+        toast.info('No characters found in this document. The document may not contain named characters.')
       } else {
-        throw new Error('Invalid response format')
+        toast.success(`Found ${result.characters.length} character${result.characters.length !== 1 ? 's' : ''}`)
       }
     } catch (error) {
-      toast.error('Unable to scan for characters. Please try again or check the document content.')
-      console.error('Character extraction error:', error)
+      const errorMsg = error instanceof Error ? error.message : 'Unknown error occurred'
+      toast.error(`Character scan failed: ${errorMsg}`)
+      console.error('Character extraction unexpected error:', error)
     } finally {
       setIsScanning(false)
     }
