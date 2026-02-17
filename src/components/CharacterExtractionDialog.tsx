@@ -1,7 +1,7 @@
 import { useState } from 'react'
-import { Button } from '@/components/ui/button'
-import { Checkbox } from '@/components/ui/checkbox'
-import { Label } from '@/components/ui/label'
+import { Checkbox } from '@/components/ui/check
+import {
+  DialogContent,
 import {
   Dialog,
   DialogContent,
@@ -20,50 +20,50 @@ interface ExtractedCharacter {
   name: string
   role?: string
   description: string
-  relevantContent: string
+export function Character
 }
 
 interface CharacterExtractionDialogProps {
-  open: boolean
+}: CharacterExt
   onOpenChange: (open: boolean) => void
-  documentContent: string
+  const [selectedCharacte
   documentTitle: string
   onCharactersCreated: (characters: Array<{ title: string; content: string }>) => void
 }
 
-export function CharacterExtractionDialog({
-  open,
-  onOpenChange,
-  documentContent,
-  documentTitle,
-  onCharactersCreated,
-}: CharacterExtractionDialogProps) {
-  const [isScanning, setIsScanning] = useState(false)
-  const [characters, setCharacters] = useState<ExtractedCharacter[]>([])
-  const [selectedCharacters, setSelectedCharacters] = useState<Set<string>>(new Set())
-  const [hasScanned, setHasScanned] = useState(false)
+      "name": "Character Name",
+      "
+    }
+}
+Only extract cha
+If no clear characters
+      const response = await window.
 
-  const handleScanForCharacters = async () => {
-    setIsScanning(true)
+        throw new Error('Invalid response format from AI')
+
+        toast.info('No characters found in this docum
+
+      }
+      setCharacters(par
     
-    try {
-      const promptText = `You are analyzing a document to extract character information.
+      
+    } catch (error) {
 
-Document Title: ${documentTitle}
+      setIsScanning(false)
 
-Document Content:
-${documentContent}
+  const toggleCha
+      const newSet
 
-Carefully read through the document and identify all characters mentioned. For each character, extract:
-1. Their name
-2. Their role or title (if mentioned)
-3. A brief description (2-3 sentences summarizing key information about them)
-4. Relevant content from the document about this character (extract the specific paragraphs or sentences that discuss this character)
+        newSet.add(characterName)
+      return 
+  }
+  const handleCreatePages = () => {
+    
 
-Return the result as a JSON object with this structure:
-{
-  "characters": [
-    {
+    }
+ 
+      
+     
       "name": "Character Name",
       "role": "Role or Title (optional)",
       "description": "Brief summary of the character",
@@ -76,7 +76,7 @@ Only extract characters that are clearly named individuals (not generic mentions
 
 If no clear characters are found, return an empty characters array.`
 
-      const response = await window.spark.llm(promptText, 'gpt-4o', true)
+      const response = await spark.llm(prompt, 'gpt-4o', true)
       const parsedData = JSON.parse(response)
 
       if (!parsedData.characters || !Array.isArray(parsedData.characters)) {
@@ -91,7 +91,7 @@ If no clear characters are found, return an empty characters array.`
       }
 
       setCharacters(parsedData.characters)
-      const allNames = new Set<string>(parsedData.characters.map((c: ExtractedCharacter) => c.name))
+      const allNames = new Set(parsedData.characters.map((c: ExtractedCharacter) => c.name))
       setSelectedCharacters(allNames)
       setHasScanned(true)
       
@@ -136,7 +136,7 @@ If no clear characters are found, return an empty characters array.`
       content += `---\n\n*Extracted from: ${documentTitle}*`
 
       return {
-        title: character.name,
+                <div className
         content,
       }
     })
@@ -146,10 +146,10 @@ If no clear characters are found, return an empty characters array.`
     toast.success(`Created ${characterPages.length} character page${characterPages.length !== 1 ? 's' : ''}!`)
     
     setCharacters([])
-    setSelectedCharacters(new Set())
-    setHasScanned(false)
+                    <Button
+                      De
     onOpenChange(false)
-  }
+   
 
   const handleClose = () => {
     setCharacters([])
@@ -160,7 +160,7 @@ If no clear characters are found, return an empty characters array.`
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-3xl max-h-[90vh]">
+                      <CardHeader className="pb-3">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Sparkle size={24} weight="fill" className="text-accent" />
@@ -168,7 +168,7 @@ If no clear characters are found, return an empty characters array.`
           </DialogTitle>
           <DialogDescription>
             Scan the document content for characters and automatically create pages for them
-          </DialogDescription>
+                              
         </DialogHeader>
 
         <ScrollArea className="max-h-[calc(90vh-220px)]">
@@ -182,9 +182,9 @@ If no clear characters are found, return an empty characters array.`
                   <h3 className="font-semibold text-lg">Ready to scan for characters</h3>
                   <p className="text-sm text-muted-foreground max-w-md">
                     AI will analyze "{documentTitle}" and identify all named characters mentioned in the content.
-                  </p>
+                  ))}
                 </div>
-                <Button
+            )}
                   onClick={handleScanForCharacters}
                   disabled={isScanning}
                   className="gap-2"
@@ -192,17 +192,17 @@ If no clear characters are found, return an empty characters array.`
                 >
                   <Sparkle size={18} weight="fill" />
                   {isScanning ? 'Scanning...' : 'Scan for Characters'}
-                </Button>
+              className="
               </div>
             ) : characters.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 space-y-4">
-                <div className="text-center space-y-2">
+      </DialogContent>
                   <h3 className="font-semibold text-lg">No characters found</h3>
                   <p className="text-sm text-muted-foreground max-w-md">
                     The AI didn't detect any named characters in this document. You can try importing a different document.
                   </p>
                 </div>
-              </div>
+
             ) : (
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
@@ -210,7 +210,7 @@ If no clear characters are found, return an empty characters array.`
                     <h3 className="font-semibold">Found {characters.length} character{characters.length !== 1 ? 's' : ''}</h3>
                     <p className="text-sm text-muted-foreground">
                       Select which characters to create pages for
-                    </p>
+
                   </div>
                   <div className="flex gap-2">
                     <Button
@@ -218,11 +218,11 @@ If no clear characters are found, return an empty characters array.`
                       size="sm"
                       onClick={() => setSelectedCharacters(new Set(characters.map(c => c.name)))}
                     >
-                      Select All
+
                     </Button>
                     <Button
                       variant="outline"
-                      size="sm"
+
                       onClick={() => setSelectedCharacters(new Set())}
                     >
                       Deselect All
@@ -236,11 +236,11 @@ If no clear characters are found, return an empty characters array.`
                       key={character.name}
                       className={`cursor-pointer transition-colors ${
                         selectedCharacters.has(character.name)
-                          ? 'border-accent bg-accent/5'
+
                           : 'hover:border-muted-foreground/20'
                       }`}
                       onClick={() => toggleCharacter(character.name)}
-                    >
+
                       <CardHeader className="pb-3">
                         <div className="flex items-start gap-3">
                           <Checkbox
@@ -250,7 +250,7 @@ If no clear characters are found, return an empty characters array.`
                           />
                           <div className="flex-1 space-y-1">
                             <CardTitle className="text-lg flex items-center gap-2">
-                              {character.name}
+
                               {character.role && (
                                 <Badge variant="secondary" className="font-normal">
                                   {character.role}
@@ -262,40 +262,40 @@ If no clear characters are found, return an empty characters array.`
                             </CardDescription>
                           </div>
                         </div>
-                      </CardHeader>
-                      <CardContent className="pt-0">
-                        <details className="text-sm">
-                          <summary className="cursor-pointer text-muted-foreground hover:text-foreground">
-                            View extracted content
-                          </summary>
-                          <div className="mt-2 p-3 bg-muted/50 rounded-md text-xs">
-                            {character.relevantContent}
-                          </div>
-                        </details>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        </ScrollArea>
 
-        {hasScanned && characters.length > 0 && (
-          <DialogFooter>
-            <Button variant="outline" onClick={handleClose}>
-              Cancel
-            </Button>
-            <Button
-              onClick={handleCreatePages}
-              disabled={selectedCharacters.size === 0}
-              className="gap-2"
-            >
-              Create {selectedCharacters.size} Page{selectedCharacters.size !== 1 ? 's' : ''}
-            </Button>
-          </DialogFooter>
-        )}
-      </DialogContent>
-    </Dialog>
-  )
-}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
