@@ -19,6 +19,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Sparkle, Warning, PencilSimple } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import { useWarhammerDatabase } from '@/hooks/use-warhammer-database'
+import { findExistingCharacter, mergeCharacterContent } from '@/lib/character-merger'
 import type { Document } from '@/types/document'
 
 interface SmartImportDialogProps {
@@ -66,8 +67,10 @@ export function SmartImportDialog({ onImport, documents, setDocuments }: SmartIm
     addFaction,
     addCharacter,
     addBattle,
+    updateCharacter,
     factions,
     battles,
+    characters,
   } = useWarhammerDatabase()
 
   const handleAnalyzeDocument = async () => {
@@ -286,6 +289,7 @@ Be thorough and extract all characters mentioned in the document. For the descri
 
     try {
       let factionId = ''
+      let successMessage = ''
       if (parsedData.faction) {
         setProgress(20)
         try {
@@ -358,31 +362,92 @@ Be thorough and extract all characters mentioned in the document. For the descri
             }
           }
 
-          const newCharacter = addCharacter({
-            name: charData.name,
-            factionId: factionId,
-            role: charData.role,
-            description: charData.description,
-            battleIds: battleIds,
-          })
+          const mergeResult = findExistingCharacter(charData.name, documents, characters)
+          
+          if (mergeResult.shouldMerge && mergeResult.existingDocument && mergeResult.existingCharacter) {
+            setStatusMessage(`Merging with existing character: ${charData.name}...`)
+            
+            const newContent = `${charData.role ? `## Role\n\n${charData.role}\n\n` : ''}## Background\n\n${charData.description}${charData.battles && charData.battles.length > 0 ? `\n\n## Notable Battles\n\n${charData.battles.map(b => `- ${b}`).join('\n')}` : ''}`
+            
+            const mergedContent = mergeCharacterContent(
+              mergeResult.existingDocument.content,
+              newContent,
+              googleDriveUrl,
+              parsedData.faction?.name
+            )
+            
+            const combinedBattleIds = [...new Set([...mergeResult.existingCharacter.battleIds, ...battleIds])]
+            updateCharacter(mergeResult.existingCharacter.id, {
+              description: charData.description,
+              battleIds: combinedBattleIds,
+            })
+            
+            return {
+              ...mergeResult.existingDocument,
+              content: mergedContent,
+              updatedAt: Date.now(),
+            }
+          } else {
+            const newCharacter = addCharacter({
+              name: charData.name,
+              factionId: factionId,
+              role: charData.role,
+              description: charData.description,
+              battleIds: battleIds,
+            })
 
-          const characterDoc: Document = {
-            id: `doc-${Date.now()}-${Math.random().toString(36).substr(2, 9)}-${index}`,
-            title: charData.name,
-            content: `${charData.role ? `## Role\n\n${charData.role}\n\n` : ''}## Background\n\n${charData.description}${charData.battles && charData.battles.length > 0 ? `\n\n## Notable Battles\n\n${charData.battles.map(b => `- ${b}`).join('\n')}` : ''}`,
-            createdAt: Date.now(),
-            updatedAt: Date.now(),
-            sourceUrl: googleDriveUrl,
-            entityType: 'character',
-            entityId: newCharacter.id,
+            const characterDoc: Document = {
+              id: `doc-${Date.now()}-${Math.random().toString(36).substr(2, 9)}-${index}`,
+              title: charData.name,
+              content: `${charData.role ? `## Role\n\n${charData.role}\n\n` : ''}## Background\n\n${charData.description}${charData.battles && charData.battles.length > 0 ? `\n\n## Notable Battles\n\n${charData.battles.map(b => `- ${b}`).join('\n')}` : ''}`,
+              createdAt: Date.now(),
+              updatedAt: Date.now(),
+              sourceUrl: googleDriveUrl,
+              entityType: 'character',
+              entityId: newCharacter.id,
+            }
+
+            return characterDoc
           }
-
-          return characterDoc
         })
 
         const characterDocs = await Promise.all(characterCreationPromises)
         
-        setDocuments((currentDocs) => [...characterDocs, ...(currentDocs || [])])
+        setDocuments((currentDocs) => {
+          const current = currentDocs || []
+          const updatedDocs = [...current]
+          
+          characterDocs.forEach(newDoc => {
+            const existingIndex = updatedDocs.findIndex(d => d.id === newDoc.id)
+            if (existingIndex !== -1) {
+              updatedDocs[existingIndex] = newDoc
+            } else {
+              updatedDocs.unshift(newDoc)
+            }
+          })
+          
+          return updatedDocs
+        })
+        
+        const mergedCount = characterDocs.filter(doc => {
+          const existingChar = characters.find(c => c.name.toLowerCase() === doc.title.toLowerCase())
+          return existingChar && documents.some(d => d.entityId === existingChar.id)
+        }).length
+        const newCount = selectedCharacterData.length - mergedCount
+        
+        if (mergedCount > 0 && newCount > 0) {
+          successMessage = `Created ${newCount} new character${newCount !== 1 ? 's' : ''} and merged ${mergedCount} existing character${mergedCount !== 1 ? 's' : ''}!`
+        } else if (mergedCount > 0) {
+          successMessage = `Merged ${mergedCount} existing character${mergedCount !== 1 ? 's' : ''}!`
+        } else {
+          successMessage = `Created ${newCount} new character${newCount !== 1 ? 's' : ''}!`
+        }
+        
+        if (parsedData.faction) {
+          successMessage = `Successfully imported 1 faction and ${successMessage.toLowerCase()}`
+        } else {
+          successMessage = `Successfully ${successMessage.toLowerCase()}`
+        }
       } catch (characterError) {
         const errorDetails: ErrorDetails = {
           stage: 'Creating Characters',
@@ -396,7 +461,7 @@ Be thorough and extract all characters mentioned in the document. For the descri
       setProgress(100)
       setStatusMessage('Import complete!')
       
-      toast.success(`Successfully imported ${parsedData.faction ? '1 faction and ' : ''}${selectedCharacterData.length} character${selectedCharacterData.length !== 1 ? 's' : ''}!`)
+      toast.success(successMessage)
       
       setTimeout(() => {
         setOpen(false)
