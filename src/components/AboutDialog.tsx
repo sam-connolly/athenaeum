@@ -1,84 +1,61 @@
 import { Info } from '@phosphor-icons/react'
-import { Button 
-  Dialog
-  DialogT
+import { Button } from '@/components/ui/button'
+import {
+  Dialog,
   DialogContent,
   DialogTrigger,
   DialogTitle,
-  DialogHeader
-  } from '@/components/ui/button'
-  
+  DialogHeader,
+  DialogDescription
+} from '@/components/ui/dialog'
+import { ScrollArea } from '@/components/ui/scroll-area'
+
 export function AboutDialog() {
+  return (
     <Dialog>
-
+      <DialogTrigger asChild>
+        <Button variant="ghost" size="icon">
+          <Info size={24} />
         </Button>
-      <Dia
-    <Dialog>
-        <ScrollArea className
+      </DialogTrigger>
+      <DialogContent className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>About Athenaeum</DialogTitle>
+          <DialogDescription>
+            Your personal knowledge repository
+          </DialogDescription>
+        </DialogHeader>
+        <ScrollArea className="max-h-[60vh] pr-4">
+          <div className="space-y-4">
             <section>
-              <p className="
-        </Button>
-              </p>
-                Over the centuries, the ter
-                the sa
-            </section>
-              <h3 class
-                Our philosophy is simple: bea
-              </p>
-            <section>
-              <ul className="space-y-2 text-muted-foreground">
-                  <span className="text-accent font-semibold mt-0.5
-                </li>
-                  <span className="text-accent font-semibold mt-0.5">•</span>
-                </li>
-              </p>
-                  <span className="text-accent font-semibold mt-0.5
-                </li>
-                  <span className="text-accent font-semibold mt-0.5">•</span>
-                </li>
+              <p className="text-sm text-muted-foreground">
+                Athenaeum is a knowledge management system designed to help you organize, store, and retrieve information efficiently.
               </p>
             </section>
             <section>
+              <h3 className="font-semibold mb-2">Features</h3>
+              <ul className="space-y-2 text-sm text-muted-foreground">
+                <li className="flex gap-2">
+                  <span className="text-accent font-semibold">•</span>
+                  <span>Import documents from various sources</span>
+                </li>
+                <li className="flex gap-2">
+                  <span className="text-accent font-semibold">•</span>
+                  <span>Smart content extraction and organization</span>
+                </li>
+                <li className="flex gap-2">
+                  <span className="text-accent font-semibold">•</span>
+                  <span>Search and browse your knowledge base</span>
+                </li>
+                <li className="flex gap-2">
+                  <span className="text-accent font-semibold">•</span>
+                  <span>Markdown rendering with rich formatting</span>
+                </li>
+              </ul>
             </section>
-        </ScrollArea>
-    </Dialog>
-}
-
-
-
-
-              <ul className="space-y-2 text-muted-foreground">
-
-
-
-                </li>
-
-
-
-                </li>
-
-
-
-                </li>
-
-                  <span className="text-accent font-semibold mt-0.5">•</span>
-
-                </li>
-
-                  <span className="text-accent font-semibold mt-0.5">•</span>
-
-
-
-            </section>
-            <section>
-
-
-
-
-
           </div>
-
+        </ScrollArea>
       </DialogContent>
-
+    </Dialog>
   )
-
+}
