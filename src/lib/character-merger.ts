@@ -1,135 +1,135 @@
 import type { Document } from '@/types/document'
-import type { Character } from '@/types/warhammer'
+
 
 export interface MergeResult {
   shouldMerge: boolean
   existingDocument: Document | null
-  existingCharacter: Character | null
-}
+export function findExistingCharacter
+ 
 
-export function findExistingCharacter(
-  characterName: string,
-  documents: Document[],
-  characters: Character[]
-): MergeResult {
-  const normalizedName = characterName.toLowerCase().trim()
   
-  const existingCharacter = characters.find(
-    char => char.name.toLowerCase().trim() === normalizedName
-  )
+    char => char.name.to
   
-  if (!existingCharacter) {
-    return { shouldMerge: false, existingDocument: null, existingCharacter: null }
-  }
+    return { shouldMerge:
   
-  const existingDocument = documents.find(
-    doc => doc.entityType === 'character' && doc.entityId === existingCharacter.id
-  )
+    doc => doc.entityType === 'character' && doc.entityId =
   
-  return {
     shouldMerge: true,
-    existingDocument: existingDocument || null,
     existingCharacter,
-  }
 }
-
-export function mergeCharacterContent(
-  existingContent: string,
+ex
   newContent: string,
-  newSourceUrl?: string,
   newDocumentTitle?: string
-): string {
-  const sections = parseContentSections(existingContent)
-  const newSections = parseContentSections(newContent)
+  c
   
-  let mergedContent = ''
   
-  if (newSections.role && !sections.role) {
     sections.role = newSections.role
-  }
   
-  if (sections.role) {
-    mergedContent += `## Role\n\n${sections.role}\n\n`
-  }
   
-  if (newSections.background) {
-    if (sections.background) {
-      sections.background += `\n\n${newSections.background}`
+  
+    if (sections.backg
     } else {
-      sections.background = newSections.background
     }
-  }
   
-  if (sections.background) {
-    mergedContent += `## Background\n\n${sections.background}\n\n`
-  }
-  
-  if (newSections.description) {
+ 
+
     if (sections.description) {
-      sections.description += `\n\n${newSections.description}`
     } else {
-      sections.description = newSections.description
     }
-  }
   
-  if (sections.description) {
-    mergedContent += `## Description\n\n${sections.description}\n\n`
-  }
+    mergedContent += `## De
   
-  if (newSections.additionalInfo) {
     if (sections.additionalInfo) {
-      sections.additionalInfo += `\n\n${newSections.additionalInfo}`
     } else {
-      sections.additionalInfo = newSections.additionalInfo
-    }
-  }
   
-  if (sections.additionalInfo) {
-    mergedContent += `## Additional Information\n\n${sections.additionalInfo}\n\n`
-  }
   
-  if (newSections.battles) {
-    const existingBattles = sections.battles || []
-    const newBattles = newSections.battles
-    const allBattles = [...new Set([...existingBattles, ...newBattles])]
-    sections.battles = allBattles
-  }
   
-  if (sections.battles && sections.battles.length > 0) {
-    mergedContent += `## Notable Battles\n\n${sections.battles.map(b => `- ${b}`).join('\n')}\n\n`
-  }
   
-  if (!sections.sources) {
-    sections.sources = []
-  }
+    const existingBattles = sections
+   
   
-  if (newSourceUrl || newDocumentTitle) {
-    const sourceEntry = newDocumentTitle 
-      ? (newSourceUrl ? `${newDocumentTitle} (${newSourceUrl})` : newDocumentTitle)
-      : newSourceUrl || ''
+  if (sections.battles
+  }
+  i
+  
+  if (newSourceUrl || newDocume
+      ? (newSourceUrl ? `${new
     
-    if (sourceEntry && !sections.sources.includes(sourceEntry)) {
-      sections.sources.push(sourceEntry)
-    }
+      sectio
+  }
+  if 
   }
   
-  if (sections.sources.length > 0) {
-    mergedContent += `## Sources\n\n${sections.sources.map(s => `- ${s}`).join('\n')}`
-  }
-  
-  return mergedContent.trim()
-}
 
-interface ContentSections {
   role?: string
-  background?: string
-  description?: string
-  additionalInfo?: string
-  battles?: string[]
-  sources?: string[]
+  d
+  
+}
+function parseContentSections(c
+  
+  if (roleMa
+  }
+  con
+   
+  
+  if (descriptionMatch) {
+  }
+  c
+  
+  
+  if (battlesMatch) {
+    sections.battles = battleLines
+      .map(l
+  
+  if 
+   
+  
+  
+}
+exp
+}
+export function createSource
+  documentTitle?: string
+  if (documentTitle && sourceUrl) {
+  } else if (documentTitle) {
+  } else if (sourceUrl) {
+  }
 }
 
-function parseContentSections(content: string): ContentSections {
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
   const sections: ContentSections = {}
   
   const roleMatch = content.match(/## Role\s*\n\n([\s\S]*?)(?=\n##|\n\n##|$)/i)
