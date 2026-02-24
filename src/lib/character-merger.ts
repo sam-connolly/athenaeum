@@ -1,13 +1,11 @@
 import type { Document } from '@/types/document'
-import type { Character } from '@/types/warhammer'
 
 export interface MergeResult {
   shouldMerge: boolean
-  existingDocument: Document | null
-  existingCharacter: Character | null
-}
 
-interface ContentSections {
+ 
+
+  battles?: string[]
   role?: string
   background?: string
   description?: string
@@ -16,62 +14,55 @@ interface ContentSections {
   sources?: string[]
 }
 
-export function findExistingCharacter(
-  characterName: string,
-  documents: Document[],
-  characters: Character[]
-): MergeResult {
-  const existingDocument = documents.find(
-    doc => doc.entityType === 'character' && 
-    doc.title.toLowerCase().includes(characterName.toLowerCase())
-  )
-  
-  const existingCharacter = characters.find(
-    char => char.name.toLowerCase().includes(characterName.toLowerCase())
-  )
-  
-  if (existingDocument && existingCharacter) {
-    return {
+  if (existingDocument && existingChar
       shouldMerge: true,
-      existingDocument,
-      existingCharacter,
-    }
+      existingCharacter
   }
-  
   return {
-    shouldMerge: false,
     existingDocument: null,
-    existingCharacter: null,
   }
-}
 
-export function mergeCharacterContent(
-  existingContent: string,
-  newContent: string,
+  
   newSourceUrl?: string,
-  newDocumentTitle?: string
 ): string {
-  const sections = parseContentSections(existingContent)
-  const newSections = parseContentSections(newContent)
-  
-  let mergedContent = ''
-  
-  if (newSections.role) {
-    sections.role = newSections.role
+  const newSections = pa
+  let mergedContent = '
+  if 
   }
   
-  if (sections.role) {
-    mergedContent += `## Role\n\n${sections.role}\n\n`
   }
+  if (newSections.backg
+      sections.background =
+   
+ 
+
+  }
+  if (newSections.descript
+      sections.descri
+      sections.descripti
+  }
+  if (secti
+  }
+  if (newSections.additionalInfo) {
   
-  if (newSections.background) {
-    if (sections.background) {
-      sections.background = `${sections.background}\n\n${newSections.background}`
-    } else {
-      sections.background = newSections.background
+      sections.additiona
+  
+  if (sections.additional
+  }
+  i
+  
+    sections.battles =
+  
+   
+  
+  if (newSourceReference) {
+    if (!existingSources.inclu
     }
-  }
   
+    mergedContent += `## Sources\n\n${sections.sou
+  
+}
+fu
   if (sections.background) {
     mergedContent += `## Background\n\n${sections.background}\n\n`
   }
@@ -127,61 +118,61 @@ export function mergeCharacterContent(
 }
 
 function parseContentSections(content: string): ContentSections {
-  const sections: ContentSections = {}
-  
-  const roleMatch = content.match(/## Role\s*\n\n([\s\S]*?)(?=\n##|\n\n##|$)/i)
-  if (roleMatch) {
-    sections.role = roleMatch[1].trim()
-  }
-  
-  const backgroundMatch = content.match(/## Background\s*\n\n([\s\S]*?)(?=\n##|\n\n##|$)/i)
-  if (backgroundMatch) {
-    sections.background = backgroundMatch[1].trim()
-  }
-  
-  const descriptionMatch = content.match(/## Description\s*\n\n([\s\S]*?)(?=\n##|\n\n##|$)/i)
-  if (descriptionMatch) {
-    sections.description = descriptionMatch[1].trim()
-  }
-  
-  const additionalMatch = content.match(/## Additional Information\s*\n\n([\s\S]*?)(?=\n##|\n\n##|$)/i)
-  if (additionalMatch) {
-    sections.additionalInfo = additionalMatch[1].trim()
-  }
-  
-  const battlesMatch = content.match(/## Notable Battles\s*\n\n([\s\S]*?)(?=\n##|\n\n##|$)/i)
-  if (battlesMatch) {
-    const battleLines = battlesMatch[1].trim().split('\n')
-    sections.battles = battleLines
-      .filter(line => line.trim().startsWith('-'))
-      .map(line => line.replace(/^-\s*/, '').trim())
-  }
-  
-  const sourcesMatch = content.match(/## Sources?\s*\n\n([\s\S]*?)(?=\n##|\n\n##|$)/i)
-  if (sourcesMatch) {
-    const sourceLines = sourcesMatch[1].trim().split('\n')
-    sections.sources = sourceLines
-      .filter(line => line.trim().startsWith('-'))
-      .map(line => line.replace(/^-\s*/, '').trim())
-  }
-  
-  return sections
-}
 
-export function extractSourceUrlFromDocument(document: Document): string | undefined {
-  return document.sourceUrl
-}
 
-export function createSourceReference(
-  sourceUrl?: string,
-  documentTitle?: string
-): string {
-  if (documentTitle && sourceUrl) {
-    return `${documentTitle} (${sourceUrl})`
-  } else if (documentTitle) {
-    return documentTitle
-  } else if (sourceUrl) {
-    return sourceUrl
-  }
-  return 'Unknown source'
-}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
