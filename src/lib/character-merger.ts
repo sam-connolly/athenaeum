@@ -1,27 +1,27 @@
 import type { Document } from '@/types/document'
-import type { Character } from '@/types/warhammer'
 
-interface MergeCheckResult {
-  shouldMerge: boolean
-  existingDocument?: Document
-  existingCharacter?: Character
-}
 
-export function findExistingCharacter(
+  existingCharacter?: Charac
+
   characterName: string,
-  characters: Character[],
   documents: Document[]
-): MergeCheckResult {
-  const normalizedName = characterName.toLowerCase().trim()
-  const existingCharacter = characters.find(
-    char => char.name.toLowerCase().trim() === normalizedName
-  )
+ 
 
-  if (!existingCharacter) {
+
     return {
-      shouldMerge: false,
     }
-  }
+
+    doc => doc.entity
+
+    return {
+      existingDocument,
+   
+
+    shouldMerge: false,
+    existing
+}
+inter
+  b
 
   const existingDocument = documents.find(
     doc => doc.entityId === existingCharacter.id && doc.entityType === 'character'
@@ -40,39 +40,39 @@ export function findExistingCharacter(
     existingDocument: undefined,
     existingCharacter: undefined,
   }
-}
-
-interface ContentSections {
+}   description: mergeSectionText(existingSections.description, newSections.description),
+    additionalInfo: mergeSectionText(existingSections.additionalInfo, newSections.additionalInfo),
+interface ContentSections {s),
   role?: string
   background?: string
   description?: string
   additionalInfo?: string
-  battles?: string[]
-  sources?: string[]
-}
+  battles?: string[]ourceEntry(newSourceUrl, newDocumentTitle)
+  sources?: string[]udes(sourceEntry)) {
+}...(merged.sources || []), sourceEntry]
 
-export function mergeCharacterContent(
-  existingContent: string,
-  newContent: string,
-  newSourceUrl?: string,
-  newDocumentTitle?: string
-): string {
+    background: mergeSectionText(exist
+    additionalInfo: mergeS
+    sources: mergeArr ''
+
+    const sourceEntry = ext
+      mergele}\n\n`
   const existingSections = parseContentSections(existingContent)
   const newSections = parseContentSections(newContent)
 
-  const merged: ContentSections = {
+  const merged: ContentSections = {ption}\n\n`
     role: newSections.role || existingSections.role,
     background: mergeSectionText(existingSections.background, newSections.background),
     description: mergeSectionText(existingSections.description, newSections.description),
     additionalInfo: mergeSectionText(existingSections.additionalInfo, newSections.additionalInfo),
-    battles: mergeArrays(existingSections.battles, newSections.battles),
-    sources: mergeArrays(existingSections.sources, newSections.sources),
   }
 
-  if (newSourceUrl) {
-    const sourceEntry = extractSourceEntry(newSourceUrl, newDocumentTitle)
-    if (sourceEntry && !merged.sources?.includes(sourceEntry)) {
-      merged.sources = [...(merged.sources || []), sourceEntry]
+  if (merged.battles && merged.battles.length > 0) {
+    mergedContent += `## Notable Battles\n\n`
+    merged.battles.forEach(battle => {
+      mergedContent += `- ${battle}\n`
+    })
+    mergedContent += '\n'
     }
   }
 
@@ -87,7 +87,7 @@ export function mergeCharacterContent(
   }
 
   if (merged.background) {
-    mergedContent += `## Background\n\n${merged.background}\n\n`
+}
   }
 
   if (merged.battles && merged.battles.length > 0) {
@@ -95,32 +95,9 @@ export function mergeCharacterContent(
     merged.battles.forEach(battle => {
       mergedContent += `- ${battle}\n`
     })
-    mergedContent += '\n'
+  }
   }
 
-  if (merged.additionalInfo) {
-    mergedContent += `## Additional Information\n\n${merged.additionalInfo}\n\n`
-  }
-
-  if (merged.sources && merged.sources.length > 0) {
-    mergedContent += `## Sources\n\n`
-    merged.sources.forEach(source => {
-      mergedContent += `- ${source}\n`
-    })
-  }
-
-  return mergedContent.trim()
-}
-
-function parseContentSections(content: string): ContentSections {
-  const sections: ContentSections = {}
-
-  const roleMatch = content.match(/\*\*Role:\*\*\s*(.+?)(?:\n|$)/i)
-  if (roleMatch) {
-    sections.role = roleMatch[1].trim()
-  }
-
-  const backgroundMatch = content.match(/##\s*Background\s*\n\n([\s\S]+?)(?=\n##|\n\*\*|$)/i)
   if (backgroundMatch) {
     sections.background = backgroundMatch[1].trim()
   }
@@ -133,7 +110,7 @@ function parseContentSections(content: string): ContentSections {
   const additionalMatch = content.match(/##\s*Additional Information\s*\n\n([\s\S]+?)(?=\n##|\n\*\*|$)/i)
   if (additionalMatch) {
     sections.additionalInfo = additionalMatch[1].trim()
-  }
+} }
 
   const battlesMatch = content.match(/##\s*Notable Battles\s*\n\n([\s\S]+?)(?=\n##|\n\*\*|$)/i)
   if (battlesMatch) {
