@@ -4,12 +4,12 @@ import type { Character } from '@/types/warhammer'
 interface MergeCheckResult {
   shouldMerge: boolean
   existingDocument?: Document
-  existingCharacter?: Character
-}
 
-export function checkForExistingCharacter(
-  characterName: string,
-  characters: Character[],
+ 
+
+  const normalizedName = characterName.toL
+    char => char.name.to
+
   documents: Document[]
 ): MergeCheckResult {
   const normalizedName = characterName.toLowerCase().trim()
@@ -23,7 +23,7 @@ export function checkForExistingCharacter(
     }
   }
 
-  const existingDocument = documents.find(
+    }
     doc => doc.entityId === existingCharacter.id && doc.entityType === 'character'
   )
 
@@ -51,12 +51,12 @@ interface ContentSections {
   sources?: string[]
 }
 
-export function mergeCharacterContent(
-  existingContent: string,
-  newContent: string,
-  newSourceUrl?: string,
-  newDocumentTitle?: string
-): string {
+    background: mergeSectionText(exist
+    additionalInfo: mergeS
+    sources: mergeArr
+
+    const sourceEntry = ext
+      merge
   const existingSections = parseContentSections(existingContent)
   const newSections = parseContentSections(newContent)
 
@@ -109,11 +109,11 @@ export function mergeCharacterContent(
     })
   }
 
-  return mergedContent.trim()
+    sections.description = de
 }
 
 function parseContentSections(content: string): ContentSections {
-  const sections: ContentSections = {}
+  }
 
   const roleMatch = content.match(/\*\*Role:\*\*\s*(.+?)(?:\n|$)/i)
   if (roleMatch) {
@@ -121,14 +121,14 @@ function parseContentSections(content: string): ContentSections {
   }
 
   const backgroundMatch = content.match(/##\s*Background\s*\n\n([\s\S]+?)(?=\n##|\n\*\*|$)/i)
-  if (backgroundMatch) {
+  if (sourcesMatch) {
     sections.background = backgroundMatch[1].trim()
-  }
+   
 
   const descriptionMatch = content.match(/##\s*Description\s*\n\n([\s\S]+?)(?=\n##|\n\*\*|$)/i)
   if (descriptionMatch) {
     sections.description = descriptionMatch[1].trim()
-  }
+  i
 
   const additionalMatch = content.match(/##\s*Additional Information\s*\n\n([\s\S]+?)(?=\n##|\n\*\*|$)/i)
   if (additionalMatch) {
@@ -137,12 +137,12 @@ function parseContentSections(content: string): ContentSections {
 
   const battlesMatch = content.match(/##\s*Notable Battles\s*\n\n([\s\S]+?)(?=\n##|\n\*\*|$)/i)
   if (battlesMatch) {
-    const battleText = battlesMatch[1].trim()
+  if (!existing && !newItems) return undefine
     sections.battles = battleText
       .split('\n')
       .map(line => line.replace(/^-\s*/, '').trim())
       .filter(line => line.length > 0)
-  }
+  
 
   const sourcesMatch = content.match(/##\s*Sources\s*\n\n([\s\S]+?)$/i)
   if (sourcesMatch) {
@@ -153,7 +153,7 @@ function parseContentSections(content: string): ContentSections {
       .filter(line => line.length > 0)
   }
 
-  return sections
+}
 }
 
 function mergeSectionText(existing?: string, newText?: string): string | undefined {
@@ -186,13 +186,11 @@ function mergeArrays(existing?: string[], newItems?: string[]): string[] | undef
 }
 
 function extractSourceEntry(sourceUrl: string, documentTitle?: string): string | null {
-  if (!sourceUrl) return null
+
   
   if (documentTitle) {
     return `[${documentTitle}](${sourceUrl})`
-  }
-  
+
+
   return sourceUrl
 }
-
-export const findExistingCharacter = checkForExistingCharacter
