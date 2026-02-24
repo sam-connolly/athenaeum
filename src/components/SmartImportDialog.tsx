@@ -25,7 +25,7 @@ import type { Document } from '@/types/document'
 interface SmartImportDialogProps {
   onImport: (title: string, content: string, sourceUrl?: string) => void
   documents: Document[]
-  setDocuments: (updater: (docs: Document[]) => Document[]) => void
+  setDocuments: (newValue: Document[] | ((oldValue?: Document[]) => Document[])) => void
 }
 
 interface ParsedData {

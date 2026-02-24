@@ -1,135 +1,132 @@
 import type { Document } from '@/types/document'
-
+import type { Character } from '@/types/warhammer'
 
 export interface MergeResult {
   shouldMerge: boolean
   existingDocument: Document | null
-export function findExistingCharacter
- 
-
-  
-    char => char.name.to
-  
-    return { shouldMerge:
-  
-    doc => doc.entityType === 'character' && doc.entityId =
-  
-    shouldMerge: true,
-    existingCharacter,
+  existingCharacter: Character | null
 }
-ex
-  newContent: string,
-  newDocumentTitle?: string
-  c
-  
-  
-    sections.role = newSections.role
-  
-  
-  
-    if (sections.backg
-    } else {
-    }
-  
- 
 
-    if (sections.description) {
-    } else {
-    }
-  
-    mergedContent += `## De
-  
-    if (sections.additionalInfo) {
-    } else {
-  
-  
-  
-  
-    const existingBattles = sections
-   
-  
-  if (sections.battles
-  }
-  i
-  
-  if (newSourceUrl || newDocume
-      ? (newSourceUrl ? `${new
-    
-      sectio
-  }
-  if 
-  }
-  
-
+interface ContentSections {
   role?: string
-  d
-  
+  background?: string
+  description?: string
+  additionalInfo?: string
+  battles?: string[]
+  sources?: string[]
 }
-function parseContentSections(c
+
+export function findExistingCharacter(
+  characterName: string,
+  documents: Document[],
+  characters: Character[]
+): MergeResult {
+  const existingDocument = documents.find(
+    doc => doc.entityType === 'character' && 
+    doc.title.toLowerCase().includes(characterName.toLowerCase())
+  )
   
-  if (roleMa
+  const existingCharacter = characters.find(
+    char => char.name.toLowerCase().includes(characterName.toLowerCase())
+  )
+  
+  if (existingDocument && existingCharacter) {
+    return {
+      shouldMerge: true,
+      existingDocument,
+      existingCharacter,
+    }
   }
-  con
-   
   
-  if (descriptionMatch) {
-  }
-  c
-  
-  
-  if (battlesMatch) {
-    sections.battles = battleLines
-      .map(l
-  
-  if 
-   
-  
-  
-}
-exp
-}
-export function createSource
-  documentTitle?: string
-  if (documentTitle && sourceUrl) {
-  } else if (documentTitle) {
-  } else if (sourceUrl) {
+  return {
+    shouldMerge: false,
+    existingDocument: null,
+    existingCharacter: null,
   }
 }
 
+export function mergeCharacterContent(
+  existingContent: string,
+  newContent: string,
+  newSourceUrl?: string,
+  newDocumentTitle?: string
+): string {
+  const sections = parseContentSections(existingContent)
+  const newSections = parseContentSections(newContent)
+  
+  let mergedContent = ''
+  
+  if (newSections.role) {
+    sections.role = newSections.role
+  }
+  
+  if (sections.role) {
+    mergedContent += `## Role\n\n${sections.role}\n\n`
+  }
+  
+  if (newSections.background) {
+    if (sections.background) {
+      sections.background = `${sections.background}\n\n${newSections.background}`
+    } else {
+      sections.background = newSections.background
+    }
+  }
+  
+  if (sections.background) {
+    mergedContent += `## Background\n\n${sections.background}\n\n`
+  }
+  
+  if (newSections.description) {
+    if (sections.description) {
+      sections.description = `${sections.description}\n\n${newSections.description}`
+    } else {
+      sections.description = newSections.description
+    }
+  }
+  
+  if (sections.description) {
+    mergedContent += `## Description\n\n${sections.description}\n\n`
+  }
+  
+  if (newSections.additionalInfo) {
+    if (sections.additionalInfo) {
+      sections.additionalInfo = `${sections.additionalInfo}\n\n${newSections.additionalInfo}`
+    } else {
+      sections.additionalInfo = newSections.additionalInfo
+    }
+  }
+  
+  if (sections.additionalInfo) {
+    mergedContent += `## Additional Information\n\n${sections.additionalInfo}\n\n`
+  }
+  
+  if (newSections.battles) {
+    const existingBattles = sections.battles || []
+    const combinedBattles = [...existingBattles, ...newSections.battles]
+    const uniqueBattles = Array.from(new Set(combinedBattles))
+    sections.battles = uniqueBattles
+  }
+  
+  if (sections.battles && sections.battles.length > 0) {
+    mergedContent += `## Notable Battles\n\n${sections.battles.map(b => `- ${b}`).join('\n')}\n\n`
+  }
+  
+  const newSourceReference = createSourceReference(newSourceUrl, newDocumentTitle)
+  if (newSourceReference) {
+    const existingSources = sections.sources || []
+    if (!existingSources.includes(newSourceReference)) {
+      sections.sources = [...existingSources, newSourceReference]
+    }
+  }
+  
+  if (sections.sources && sections.sources.length > 0) {
+    mergedContent += `## Sources\n\n${sections.sources.map(s => `- ${s}`).join('\n')}\n\n`
+  }
+  
+  return mergedContent.trim()
+}
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+function parseContentSections(content: string): ContentSections {
   const sections: ContentSections = {}
   
   const roleMatch = content.match(/## Role\s*\n\n([\s\S]*?)(?=\n##|\n\n##|$)/i)
