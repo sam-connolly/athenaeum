@@ -14,11 +14,6 @@ export function EmptyState({ onImport }: EmptyStateProps) {
             <FileText size={48} className="text-muted-foreground" />
           </div>
         </div>
-        <h2 className="text-2xl font-semibold mb-3">Welcome to WikiDrive</h2>
-        <p className="text-muted-foreground mb-6 leading-relaxed">
-          Start building your knowledge base by importing documents from Google Drive or creating
-          new ones from scratch.
-        </p>
         <ImportDialog onImport={onImport} />
       </div>
     </div>
