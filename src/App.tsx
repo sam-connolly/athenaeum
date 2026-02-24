@@ -89,7 +89,7 @@ function App() {
           </Sheet>
         )}
         
-        <h1 className="text-xl font-semibold flex-1">WikiDrive</h1>
+        <h1 className="text-xl font-semibold flex-1">Athenaeum</h1>
         
         <div className="flex items-center gap-2">
           <DatabaseManager />
