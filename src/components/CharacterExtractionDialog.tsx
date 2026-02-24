@@ -193,6 +193,7 @@ IMPORTANT: Return only the JSON object, no other text.`
             ) : (
               <>
                 {characters.length === 0 ? (
+                  <div className="space-y-3">
                     <p className="text-sm text-muted-foreground">
                       No characters found in this document.
                     </p>
@@ -201,12 +202,12 @@ IMPORTANT: Return only the JSON object, no other text.`
                     </Button>
                   </div>
                 ) : (
-                ) : (
                   <>
                     <p className="text-sm text-muted-foreground">
                       Select characters to create wiki pages:
                     </p>
                     <div className="space-y-3">
+                      {characters.map((character) => (
                         <div
                           key={character.name}
                           className="flex items-start gap-3 p-3 border rounded-lg hover:bg-accent/50 cursor-pointer transition-colors"
