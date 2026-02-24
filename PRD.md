@@ -12,6 +12,13 @@ This application manages document imports, displays content with formatting, and
 
 ## Essential Features
 
+### About Page
+- **Functionality**: Informative dialog explaining the Athenaeum name, purpose, and key features
+- **Purpose**: Helps new users understand the application's philosophy and capabilities, establishing the scholarly atmosphere
+- **Trigger**: User clicks the info icon button in the header
+- **Progression**: Click info icon → Dialog opens → View sections on name history, purpose, and features → Close dialog
+- **Success criteria**: Content is clearly presented with proper hierarchy, scrollable for longer content, accessible from any page
+
 ### Warhammer Entity Database
 - **Functionality**: Store and manage structured data for Warhammer characters, factions, and battles in a JSON database with relationships between entities
 - **Purpose**: Provides structured metadata that can be linked to wiki documents, enabling rich cross-references and organized information architecture
@@ -146,6 +153,7 @@ Animations should be subtle and purposeful, reinforcing hierarchy and spatial re
   - `X` for closing modals/sheets
   - `Database` for entity database manager
   - `Download` for export database action
+  - `Info` for About page dialog
   
 - **Spacing**: 
   - Page padding: `p-8` (desktop), `p-4` (mobile)
