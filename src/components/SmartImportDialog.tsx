@@ -19,7 +19,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Sparkle, Warning, PencilSimple } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import { useWarhammerDatabase } from '@/hooks/use-warhammer-database'
-import { findExistingCharacter, mergeCharacterContent } from '@/lib/character-merger'
+import { checkForExistingCharacter, mergeCharacterContent } from '@/lib/character-merger'
 import type { Document } from '@/types/document'
 
 interface SmartImportDialogProps {
@@ -362,7 +362,7 @@ Be thorough and extract all characters mentioned in the document. For the descri
             }
           }
 
-          const mergeResult = findExistingCharacter(charData.name, characters, documents)
+          const mergeResult = checkForExistingCharacter(charData.name, documents, characters)
           
           if (mergeResult.shouldMerge && mergeResult.existingDocument && mergeResult.existingCharacter) {
             setStatusMessage(`Merging with existing character: ${charData.name}...`)
