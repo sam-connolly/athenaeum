@@ -362,7 +362,7 @@ Be thorough and extract all characters mentioned in the document. For the descri
             }
           }
 
-          const mergeResult = findExistingCharacter(charData.name, documents, characters)
+          const mergeResult = findExistingCharacter(charData.name, characters, documents)
           
           if (mergeResult.shouldMerge && mergeResult.existingDocument && mergeResult.existingCharacter) {
             setStatusMessage(`Merging with existing character: ${charData.name}...`)
