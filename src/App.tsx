@@ -93,8 +93,7 @@ function App() {
         
         <div className="flex items-center gap-2">
           <DatabaseManager />
-          <SmartImportDialog 
-            onImport={handleImport} 
+          <SmartImportDialog
             documents={documents}
             setDocuments={setDocuments}
           />

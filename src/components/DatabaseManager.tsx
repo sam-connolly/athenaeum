@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Database, Plus, Trash, Pencil, Download, Upload } from '@phosphor-icons/react'
+import { Database, Plus, Trash, Download } from '@phosphor-icons/react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -8,7 +8,6 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -21,7 +20,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import {
@@ -61,7 +60,6 @@ export function DatabaseManager() {
     deleteBattle,
     deleteCharacter,
     getFactionById,
-    getBattleById,
   } = useWarhammerDatabase()
 
   const [open, setOpen] = useState(false)

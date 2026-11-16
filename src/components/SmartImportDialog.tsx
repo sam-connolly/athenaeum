@@ -23,7 +23,6 @@ import { checkForExistingCharacter, mergeCharacterContent } from '@/lib/characte
 import type { Document } from '@/types/document'
 
 interface SmartImportDialogProps {
-  onImport: (title: string, content: string, sourceUrl?: string) => void
   documents: Document[]
   setDocuments: (newValue: Document[] | ((oldValue?: Document[]) => Document[])) => void
 }
@@ -50,7 +49,7 @@ interface ErrorDetails {
 
 type ImportStep = 'input' | 'preview' | 'creating'
 
-export function SmartImportDialog({ onImport, documents, setDocuments }: SmartImportDialogProps) {
+export function SmartImportDialog({ documents, setDocuments }: SmartImportDialogProps) {
   const [open, setOpen] = useState(false)
   const [googleDriveUrl, setGoogleDriveUrl] = useState('')
   const [isLoading, setIsLoading] = useState(false)
