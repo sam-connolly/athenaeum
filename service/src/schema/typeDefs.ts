@@ -218,9 +218,9 @@ export const typeDefs = /* GraphQL */ `
     }
 
     """
-    The user's decision on one proposed entity. Omit an entity (or set include:false)
-    to skip it. Edited fields override what was proposed. Set existingId to null to
-    force a new entity instead of the suggested match.
+    The user's decision on one proposed entity. Entities left out, or with include:false,
+    are skipped. Edited fields override what was proposed. useExisting:false creates a
+    new entity even when a match was suggested.
     """
     input EntityDecisionInput {
         key: ID!
@@ -228,7 +228,6 @@ export const typeDefs = /* GraphQL */ `
         name: String
         summary: String
         role: String
-        existingId: ID
         useExisting: Boolean
     }
 
