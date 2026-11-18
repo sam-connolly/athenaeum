@@ -47,3 +47,12 @@ test("extracts TODO and IDEA markers into open questions and removes them from b
     assert.ok(cleaned.includes("Some lore."));
     assert.ok(cleaned.includes("More lore."));
 });
+
+test("lists a repeated open question once and removes markdown escapes from it", () => {
+    const raw = "A <TODO: appeared atop \\<Mountain name> B <TODO: appeared atop \\<Mountain name> C <IDEA: other>";
+    const { openQuestions } = preClean(raw);
+    assert.deepEqual(openQuestions, [
+        { type: "TODO", text: "appeared atop <Mountain name" },
+        { type: "IDEA", text: "other" },
+    ]);
+});

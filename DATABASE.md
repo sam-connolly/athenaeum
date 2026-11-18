@@ -1,161 +1,80 @@
-# Warhammer Database Structure
+# Data model
 
-This wiki application includes an in-memory JSON database for storing Warhammer-related entities.
+Athenaeum stores everything in MongoDB through `athenaeum-service`. Models live in `service/src/models/`, and the GraphQL schema that exposes them is `service/src/schema/typeDefs.ts`.
 
-## Database Schema
+## Collections
 
-### Factions
-Factions represent the various armies and organizations in the Warhammer universe.
+### Document: a raw import
 
-```typescript
-interface Faction {
-  id: string              // Unique identifier (auto-generated)
-  name: string           // Faction name (e.g., "Ultramarines")
-  description?: string   // Optional description
-  createdAt: number      // Timestamp
-  updatedAt: number      // Timestamp
-}
-```
+One record per import, so every page can be traced back to what was imported.
 
-### Battles
-Battles represent significant conflicts in the Warhammer universe.
+| Field | Notes |
+|---|---|
+| `title` | From the import, or the first heading |
+| `sourceUrl` | The Google Docs link, or `null` for pasted text |
+| `sourceFormat` | `google-docs-export` or `manual` |
+| `raw`, `cleaned` | The text as imported, and after `preClean` |
+| `openQuestions` | `{ type: "TODO" \| "IDEA", text }[]`, taken out of the text |
+| `proposedEntities` | What the preview step found (used by commit) |
+| `status` | `draft` until the import is committed, then `committed` |
+| `pageId` | The page the import created |
 
-```typescript
-interface Battle {
-  id: string              // Unique identifier (auto-generated)
-  name: string           // Battle name (e.g., "Battle of Macragge")
-  date?: string          // Optional date (e.g., "745.M41")
-  location?: string      // Optional location
-  description?: string   // Optional description
-  createdAt: number      // Timestamp
-  updatedAt: number      // Timestamp
-}
-```
+### Page: wiki content
 
-### Characters
-Characters represent individuals in the Warhammer universe, with relationships to factions and battles.
+| Field | Notes |
+|---|---|
+| `title`, `slug` | The slug is unique and stays the same when the page is renamed |
+| `content` | Markdown |
+| `sourceDocumentIds` | The documents this page came from |
+| `entityRefs` | `{ type, id }[]`, the entities this page mentions |
 
-```typescript
-interface Character {
-  id: string              // Unique identifier (auto-generated)
-  name: string           // Character name (e.g., "Marneus Calgar")
-  factionId: string      // Reference to faction ID (required)
-  battleIds: string[]    // Array of battle IDs this character participated in
-  role?: string          // Optional role (e.g., "Chapter Master")
-  description?: string   // Optional description
-  createdAt: number      // Timestamp
-  updatedAt: number      // Timestamp
-}
-```
+Pages have a text index on `title` and `content`, used by `searchPages`.
 
-## Relationships
+### Entities: the index
 
-- **Character → Faction**: Each character belongs to one faction (one-to-many relationship)
-- **Character → Battles**: Each character can participate in multiple battles (many-to-many relationship)
+All four types share these fields:
 
-## Database Operations
+| Field | Notes |
+|---|---|
+| `name` | Required |
+| `aliases` | Other names, used to recognise the entity in later imports |
+| `summary` | Short, factual |
+| `pageId` | The entity's own page, if it has one |
+| `sourceDocumentIds` | Every import that mentioned it |
 
-### Accessing the Database
+The type-specific fields:
 
-Use the `useWarhammerDatabase()` hook in React components:
+| Type | Fields |
+|---|---|
+| **Faction** | `homeworldId` → Place, `parentFactionId` → Faction. Members are the characters whose `factionId` points to it. |
+| **Character** | `role`, `factionId` → Faction, `battleIds` → Battle[], `stub` (true until a page is written about the character) |
+| **Place** | `type`: `homeworld`, `fortress_monastery`, `ship` or `other`; `factionId` → Faction |
+| **Battle** | `date` (free text, e.g. `745.M41`), `placeId` → Place, `factionIds` → Faction[]. Participants are the characters whose `battleIds` include it. |
 
-```typescript
-import { useWarhammerDatabase } from '@/hooks/use-warhammer-database'
+## Deleting
 
-function MyComponent() {
-  const { 
-    factions, 
-    battles, 
-    characters,
-    addFaction,
-    addBattle,
-    addCharacter,
-    // ... other operations
-  } = useWarhammerDatabase()
-  
-  // Your component logic
-}
-```
+Deletes never cascade to other records. References are cleared instead:
 
-### Available Operations
+| Deleting | Also does |
+|---|---|
+| Faction | Clears `factionId` on its characters and places, and `parentFactionId` on child factions; removes it from battles' `factionIds` |
+| Place | Clears `homeworldId` on factions and `placeId` on battles |
+| Battle | Removes it from characters' `battleIds` |
+| Any entity | Removes it from pages' `entityRefs` |
+| Page | Clears `pageId` on entities and documents |
 
-#### Factions
-- `addFaction(faction)` - Add a new faction
-- `updateFaction(id, updates)` - Update an existing faction
-- `deleteFaction(id)` - Delete a faction (sets factionId to empty string for associated characters)
-- `getFactionById(id)` - Get a faction by ID
+## Merging on import
 
-#### Battles
-- `addBattle(battle)` - Add a new battle
-- `updateBattle(id, updates)` - Update an existing battle
-- `deleteBattle(id)` - Delete a battle (removes battle from all characters' battleIds)
-- `getBattleById(id)` - Get a battle by ID
+When an import matches an existing entity (`service/src/import/merge.ts`):
+- the new name and aliases are added as aliases;
+- the document is added to `sourceDocumentIds`;
+- `summary`, `role` and `date` are filled only if empty, and a place's `type` only if it's `other`;
+- a faction link is set only if none exists (battles add to `factionIds`).
 
-#### Characters
-- `addCharacter(character)` - Add a new character
-- `updateCharacter(id, updates)` - Update an existing character
-- `deleteCharacter(id)` - Delete a character
-- `getCharacterById(id)` - Get a character by ID
-- `getCharactersByFaction(factionId)` - Get all characters in a faction
-- `getCharactersByBattle(battleId)` - Get all characters who participated in a battle
+Existing values are never overwritten.
 
-## Storage
+## GraphQL at a glance
 
-The database is stored using the Spark KV persistence API with the key `warhammer-database`. All data persists between sessions.
-
-## Export/Import
-
-The database can be exported to JSON format using the "Export JSON" button in the Database Manager. This creates a downloadable JSON file with the complete database structure.
-
-Example exported JSON:
-
-```json
-{
-  "factions": [
-    {
-      "id": "faction-1234567890-abc",
-      "name": "Ultramarines",
-      "description": "The Ultramarines are a Space Marine Chapter...",
-      "createdAt": 1704067200000,
-      "updatedAt": 1704067200000
-    }
-  ],
-  "battles": [
-    {
-      "id": "battle-1234567890-def",
-      "name": "Battle of Macragge",
-      "date": "745.M41",
-      "location": "Macragge",
-      "description": "The First Tyrannic War...",
-      "createdAt": 1704067200000,
-      "updatedAt": 1704067200000
-    }
-  ],
-  "characters": [
-    {
-      "id": "character-1234567890-ghi",
-      "name": "Marneus Calgar",
-      "factionId": "faction-1234567890-abc",
-      "battleIds": ["battle-1234567890-def"],
-      "role": "Chapter Master",
-      "description": "Marneus Calgar is the Chapter Master...",
-      "createdAt": 1704067200000,
-      "updatedAt": 1704067200000
-    }
-  ]
-}
-```
-
-## Linking Documents to Entities
-
-Documents can be linked to database entities by setting the `entityType` and `entityId` fields:
-
-```typescript
-const document: Document = {
-  // ... other fields
-  entityType: 'character', // 'character' | 'faction' | 'battle'
-  entityId: 'character-1234567890-ghi'
-}
-```
-
-When viewing a document linked to an entity, the DocumentRenderer will automatically display relevant metadata from the database.
+- **Queries:** `pages`, `page(id)`, `searchPages(q)`, `documents`, `document(id)`, plus a list and a single-record query for each entity type (`factions`, `faction(id)`, and so on).
+- **Mutations:** `create…`, `update…` and `delete…` for pages and every entity type, plus `previewImport` and `commitImport`.
+- **Relations** resolve when they're asked for: `Character.faction`, `Character.battles`, `Faction.members`, `Battle.participants`, `Page.sourceDocuments`, and `Page.entityRefs { name }`.

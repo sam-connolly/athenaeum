@@ -1,77 +1,90 @@
-import { useState } from 'react'
-import { useKV } from '@github/spark/hooks'
+import { useEffect, useState } from 'react'
+import { toast } from 'sonner'
 import { List } from '@phosphor-icons/react'
 import { Toaster } from '@/components/ui/sonner'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Sidebar } from '@/components/Sidebar'
-import { DocumentRenderer } from '@/components/DocumentRenderer'
+import { PageView } from '@/components/PageView'
 import { EmptyState } from '@/components/EmptyState'
 import { ImportDialog } from '@/components/ImportDialog'
-import { SmartImportDialog } from '@/components/SmartImportDialog'
 import { DatabaseManager } from '@/components/DatabaseManager'
-import type { Document } from '@/types/document'
+import { useDeletePage, usePages, useSearchPages, useUpdatePage } from '@/hooks/use-pages'
 import { useIsMobile } from '@/hooks/use-mobile'
 
+function useDebounced<T>(value: T, ms: number): T {
+  const [debounced, setDebounced] = useState(value)
+  useEffect(() => {
+    const timer = setTimeout(() => setDebounced(value), ms)
+    return () => clearTimeout(timer)
+  }, [value, ms])
+  return debounced
+}
+
 function App() {
-  const [documentsRaw, setDocuments] = useKV<Document[]>('wiki-documents', [])
-  const documents = documentsRaw || []
-  const [activeDocumentId, setActiveDocumentId] = useState<string | null>(null)
+  const [activePageId, setActivePageId] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const isMobile = useIsMobile()
 
-  const activeDocument = documents.find((doc) => doc.id === activeDocumentId) || null
+  const pagesQuery = usePages()
+  const debouncedQuery = useDebounced(searchQuery, 250)
+  const searchResults = useSearchPages(debouncedQuery)
+  const updatePage = useUpdatePage()
+  const deletePage = useDeletePage()
 
-  const handleImport = (title: string, content: string, sourceUrl?: string) => {
-    const newDoc: Document = {
-      id: `doc-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      title,
-      content,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-      sourceUrl,
-    }
+  const allPages = pagesQuery.data ?? []
+  const searching = debouncedQuery.trim().length > 0
+  const visiblePages = searching ? (searchResults.data ?? []) : allPages
 
-    setDocuments((currentDocs) => [newDoc, ...(currentDocs || [])])
-    setActiveDocumentId(newDoc.id)
-    setSidebarOpen(false)
+  const selectPage = (id: string) => {
+    setActivePageId(id)
+    if (isMobile) setSidebarOpen(false)
   }
 
-  const handleDeleteDocument = (id: string) => {
-    setDocuments((currentDocs) => (currentDocs || []).filter((doc) => doc.id !== id))
-    if (activeDocumentId === id) {
-      setActiveDocumentId(null)
-    }
+  const handleDelete = (id: string) => {
+    deletePage.mutate(id, {
+      onSuccess: () => {
+        if (activePageId === id) setActivePageId(null)
+        toast.success('Page deleted')
+      },
+      onError: (e) => toast.error(e.message),
+    })
   }
 
-  const handleRenameDocument = (id: string, newTitle: string) => {
-    setDocuments((currentDocs) =>
-      (currentDocs || []).map((doc) =>
-        doc.id === id ? { ...doc, title: newTitle, updatedAt: Date.now() } : doc
-      )
-    )
-  }
-
-  const handleSelectDocument = (id: string) => {
-    setActiveDocumentId(id)
-    if (isMobile) {
-      setSidebarOpen(false)
-    }
+  const handleRename = (id: string, title: string) => {
+    updatePage.mutate({ id, input: { title } }, { onError: (e) => toast.error(e.message) })
   }
 
   const sidebarContent = (
     <Sidebar
-      documents={documents}
-      activeDocumentId={activeDocumentId}
-      onSelectDocument={handleSelectDocument}
-      onDeleteDocument={handleDeleteDocument}
-      onRenameDocument={handleRenameDocument}
+      pages={visiblePages}
+      isSearching={searching && searchResults.isFetching}
+      activePageId={activePageId}
+      onSelectPage={selectPage}
+      onDeletePage={handleDelete}
+      onRenamePage={handleRename}
       searchQuery={searchQuery}
       onSearchChange={setSearchQuery}
     />
   )
+
+  const renderMain = () => {
+    if (pagesQuery.error) {
+      return (
+        <div className="flex items-center justify-center h-full p-8 text-center text-muted-foreground">
+          <p>{pagesQuery.error.message}</p>
+        </div>
+      )
+    }
+    if (pagesQuery.isSuccess && allPages.length === 0) return <EmptyState onImported={selectPage} />
+    return (
+      <ScrollArea className="h-full">
+        <PageView pageId={activePageId} onSelectPage={selectPage} />
+      </ScrollArea>
+    )
+  }
 
   return (
     <div className="h-screen w-screen flex flex-col overflow-hidden bg-background">
@@ -79,7 +92,7 @@ function App() {
         {isMobile && (
           <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
             <SheetTrigger asChild>
-              <Button variant="ghost" size="icon">
+              <Button variant="ghost" size="icon" aria-label="Open page list">
                 <List size={24} />
               </Button>
             </SheetTrigger>
@@ -88,35 +101,18 @@ function App() {
             </SheetContent>
           </Sheet>
         )}
-        
+
         <h1 className="text-xl font-semibold flex-1">Athenaeum</h1>
-        
+
         <div className="flex items-center gap-2">
-          <DatabaseManager />
-          <SmartImportDialog
-            documents={documents}
-            setDocuments={setDocuments}
-          />
-          <ImportDialog onImport={handleImport} />
+          <DatabaseManager onOpenPage={selectPage} />
+          <ImportDialog onImported={selectPage} />
         </div>
       </header>
 
       <div className="flex-1 flex overflow-hidden">
         {!isMobile && sidebarContent}
-
-        <main className="flex-1 overflow-hidden">
-          {documents.length === 0 ? (
-            <EmptyState onImport={handleImport} />
-          ) : (
-            <ScrollArea className="h-full">
-              <DocumentRenderer 
-                document={activeDocument} 
-                documents={documents}
-                onSelectDocument={handleSelectDocument}
-              />
-            </ScrollArea>
-          )}
-        </main>
+        <main className="flex-1 overflow-hidden">{renderMain()}</main>
       </div>
 
       <Toaster />

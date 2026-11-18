@@ -1,21 +1,15 @@
-import { Schema, model, Types, type InferSchemaType } from "mongoose";
+import { Schema, model, type InferSchemaType } from "mongoose";
+import { entityBaseFields } from "./common.ts";
 
 const characterSchema = new Schema(
     {
-        name: { type: String, required: true },
+        ...entityBaseFields,
         role: { type: String, default: "" },
-        summary: { type: String, default: "" },
-        sections: [
-            {
-                heading: { type: String, required: true },
-                body: { type: String, default: "" },
-            },
-        ],
-        factionId: { type: Types.ObjectId, ref: "Faction" },
-        // True until a document is authored specifically about this character —
-        // set when created from a name-mention inside another entity's document.
+        factionId: { type: Schema.Types.ObjectId, ref: "Faction", default: null },
+        battleIds: [{ type: Schema.Types.ObjectId, ref: "Battle" }],
+        // True until a page is written specifically about this character —
+        // set when created from a mention inside another document.
         stub: { type: Boolean, default: true },
-        sourceDocumentIds: [{ type: Types.ObjectId, ref: "Document" }],
     },
     { timestamps: true },
 );
