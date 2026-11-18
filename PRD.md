@@ -1,3 +1,5 @@
+> **Historical document.** This is the original product brief from when Athenaeum was built in GitHub Spark. The app has since moved off Spark, and some details here (Google Drive text import, the About dialog, how data is stored and imported) no longer apply. See the [README](README.md) for how the app works now.
+
 # Planning Guide
 
 A wiki-style documentation platform that imports and beautifully renders text documents from Google Drive, creating an organized knowledge base with navigation and search capabilities.

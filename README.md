@@ -1,158 +1,174 @@
 # Athenaeum
 
-Athenaeum is a wiki for Warhammer lore. Import your faction and character write-ups from Google Docs and it turns them into a browsable, cross-linked knowledge base, with a structured database of the factions, characters and battles behind the pages.
+Athenaeum is a wiki for Warhammer lore. Import your faction and character write-ups from Google Docs and it turns them into readable, cross-linked pages. Behind the pages is a database of the factions, characters, places and battles they mention.
 
-> **Project status:** Athenaeum is partway through a migration. The working app is a React frontend built on **GitHub Spark**, which stores data and calls the AI model for it. A new standalone backend (`service/`, GraphQL + MongoDB) is being built to replace Spark, but the frontend doesn't use it yet. See [Roadmap and current state](#roadmap-and-current-state).
+It has two parts: a React frontend (`src/`) and a GraphQL + MongoDB service (`service/`). The service also makes the AI calls, using the Claude API, to pick out the entities in each document you import.
 
 ---
 
 ## Using Athenaeum
 
+### Pages and entities
+
+- **Pages** are what you read: one per imported document, or any page you write yourself. A page can exist without any database entries.
+- **Entities** (factions, characters, places and battles) are a structured index. They fill the tables in the entity database, and they let Athenaeum recognise something it already knows when it turns up in a new document. An entity can have its own page, or appear in several pages, or have no page at all.
+
 ### What it does
 
-- **Wiki pages:** every imported document becomes a page, with clean typography, headings and a clickable contents list.
-- **Sidebar and search:** all pages are listed in the sidebar. Search filters by title and content as you type. Hover over a page to rename or delete it.
-- **Smart Import (AI):** paste a Google Docs link to a faction document. Athenaeum reads it, pulls out the faction and every named character, and lets you review and edit them before it creates:
-  - a faction page and database entry,
-  - a page and database entry for each character you keep.
-  If a character already has a page, the new information is **merged into it** and the new document is added as a source. You don't get a duplicate page.
-- **Import Document:** import a single Google Doc, or paste text in by hand. Afterwards you can scan the document for characters and create pages for them.
-- **Warhammer Database:** the database button in the header opens a manager for **factions, battles and characters**. You can view, add and delete entries, link characters to a faction and to battles, and export everything as JSON.
-- **Related pages:** a page linked to a database entry shows the entry's details and links to related pages, such as the characters in a faction.
+- **Import:** click **Import**, then paste a Google Docs link or some text. Claude reads the document and lists every named faction, character, place and battle it finds. You review the list before anything is saved:
+  - untick anything you don't want;
+  - fix names, roles or summaries;
+  - for each entity that **matches one already in the database**, choose to merge into it (the default) or to create a new entity. Matches are made on exact names and aliases. Claude may also suggest a match under a different name, such as "Sorcerer Lord Orasmyn" for "Orasmyn"; these are labelled for you to check.
+
+  The import then creates **one page for the document** and links the selected entities to it. Merging never overwrites what's already there: it adds the new names as aliases, records the new document as a source, and only fills fields that were empty.
+- **Write page:** the third tab in the Import dialog creates a page by hand, with no AI and no database entries.
+- **Reading a page:** pages render markdown (headings, lists, bold, links and tables), with a contents list. The entities linked to a page are listed at the top with their key facts, and with links to the other pages that mention them. Sources are listed at the bottom.
+- **Sidebar:** lists every page. Search looks through titles and page text on the server. The filter menu shows only pages that link factions, characters, places or battles, or pages with no entities. Hover over a page to rename or delete it.
+- **Entity database** (the database button in the header): a tab of tables for each entity type, where you can add, edit and delete entries, link entities to each other and to a page, and export everything as JSON.
 
 ### Importing from Google Docs
 
-1. In Google Docs, set sharing to **Anyone with the link can view**. Athenaeum fetches the plain-text export without signing in, so private documents will fail with a 401 or 403 error.
-2. Copy the document URL (`https://docs.google.com/document/d/<id>/edit`).
-3. Click **Smart Import** for a faction document with several characters, or **Import Document** for a single document.
-4. Review the extracted characters, untick any you don't want, fix names or roles, then create the pages.
+1. In Google Docs, set sharing to **Anyone with the link can view**. The service downloads the document's markdown export without signing in to Google, so private documents fail with a message telling you to change the sharing.
+2. Copy the document link (`https://docs.google.com/document/d/<id>/edit`).
+3. Click **Import**, paste the link and click **Find entities**. Reading a long document can take up to a minute.
+4. Review the entities, then click **Create page**.
 
 ### Tips and limits
 
-- The AI extraction works best on documents with clear headings, for example a section per character.
-- Images, Google's auto-generated contents list and unfilled template placeholders don't import.
-- Deleting a faction keeps its characters, but unlinks them from it. Deleting a battle removes it from every character that fought in it.
-- Your data is stored by the Spark runtime the app is hosted on, not in your browser. Use **Export JSON** in the database manager to make a backup.
+- Images, Google's auto-generated contents list and unfilled template placeholders are dropped on import.
+- `<TODO: …>` and `<IDEA: …>` notes in a document are taken out of the page text and shown during the review as open questions.
+- Deleting an entity never deletes other entities: deleting a faction keeps its characters but unlinks them, and deleting a battle removes it from the characters who fought in it. Deleting a page keeps its entities.
+- Everything is stored in MongoDB. Use **Export JSON** in the entity database for a quick backup of the entities.
 
 ---
 
 ## Developing Athenaeum
 
+### Running it locally
+
+You need Node 24 or newer, Docker, and an Anthropic API key for imports.
+
+```bash
+cd service
+```
+```bash
+docker compose up -d     # MongoDB 7 on localhost:27018
+```
+```bash
+cp .env.example .env     # then set ANTHROPIC_API_KEY in service/.env
+```
+```bash
+npm install && npm run dev   # GraphQL API on http://localhost:4000/graphql
+```
+
+In a second terminal, from the repository root:
+
+```bash
+npm install && npm run dev   # app on http://localhost:5173
+```
+
+Vite forwards `/graphql` to the service. Without an API key, everything works except **Find entities**, which shows an error explaining how to set the key.
+
 ### Repository layout
 
 ```
 .
-├── src/                    Frontend (React 19 + Vite + Tailwind 4, built on GitHub Spark)
-│   ├── App.tsx             App shell: header, sidebar, document view; documents held in Spark KV
-│   ├── components/
-│   │   ├── SmartImportDialog.tsx        Google Doc → AI → faction + characters (+ merge into existing pages)
-│   │   ├── ImportDialog.tsx             Single-document import (Google Doc URL or manual paste)
-│   │   ├── CharacterExtractionDialog.tsx  AI character scan after a single import
-│   │   ├── DatabaseManager.tsx          CRUD UI for factions / battles / characters, JSON export
-│   │   ├── DocumentRenderer.tsx         Markdown-ish rendering, contents list, entity metadata
-│   │   ├── RelatedDocuments.tsx         Cross-links between entity pages
-│   │   ├── Sidebar.tsx                  Page list, search, rename, delete
-│   │   └── ui/                          shadcn/ui components (generated; don't hand-edit)
-│   ├── hooks/use-warhammer-database.ts  Entity database on Spark KV (`warhammer-database`)
-│   ├── lib/character-merger.ts          Merges new character info into an existing page
-│   ├── lib/database-utils.ts
-│   └── types/                           Document and Warhammer entity types
-├── service/                Backend (Node + Express + GraphQL + Mongoose) — work in progress
-│   ├── src/index.ts        Server entry, GraphQL at /graphql
-│   ├── src/schema/         GraphQL schema + resolvers
-│   ├── src/models/         Document, Character, Faction, Place
-│   ├── src/extraction/     Deterministic Google-Docs-markdown cleanup + heading parser (+ tests)
-│   └── docker-compose.yml  Local MongoDB
-├── tmp/                    Sample lore documents used to develop the extraction pipeline
-├── PRD.md                  Original product/design brief (from Spark)
-└── DATABASE.md             Frontend entity database schema and hook API
+├── src/                          Frontend: React 19, Vite 7, Tailwind 4, shadcn/ui, TanStack Query
+│   ├── App.tsx                   Shell: header, sidebar, page view
+│   ├── lib/api.ts                Minimal GraphQL client (fetch)
+│   ├── lib/markdown.ts           Safe markdown rendering (no raw HTML, images or unsafe links)
+│   ├── hooks/                    use-pages, use-entities, use-import (react-query)
+│   ├── types/api.ts              Types mirroring the GraphQL schema
+│   └── components/
+│       ├── ImportDialog.tsx      Import → review → commit, and "write page"
+│       ├── PageView.tsx          A rendered page, contents list, sources
+│       ├── LinkedEntities.tsx    Entities linked to a page, with cross-links
+│       ├── DatabaseManager.tsx   Entity tables, delete, JSON export
+│       ├── EntityForm.tsx        Add/edit form for any entity type
+│       ├── Sidebar.tsx           Page list, search, filters, rename, delete
+│       └── ui/                   shadcn/ui components (generated; don't hand-edit)
+├── service/                      Backend: Node 24, Express, graphql-http, Mongoose 8
+│   ├── src/index.ts              Server entry: GraphQL at /graphql
+│   ├── src/models/               Document, Page, Faction, Character, Place, Battle
+│   ├── src/schema/               typeDefs.ts, mappers.ts, resolvers/ (pages, entities, imports)
+│   ├── src/import/               Import pipeline: Google Docs fetch, matching, merge rules
+│   ├── src/ai/extractEntities.ts The Claude call
+│   ├── src/extraction/           preClean (Google Docs clean-up) and parseStructure
+│   └── docker-compose.yml        Local MongoDB
+├── tmp/                          Sample lore documents, useful as import fixtures
+├── DATABASE.md                   Data model reference
+└── PRD.md                        The original (Spark-era) product brief
 ```
 
-### Frontend
+### Checks
 
-**Stack:** React 19, TypeScript, Vite 7, Tailwind CSS 4, shadcn/ui (Radix), Phosphor icons, Sonner toasts, `@github/spark`.
+```bash
+npm run lint && npx tsc -b && npm run build
+```
+```bash
+cd service && npm test && npm run typecheck
+```
 
-The frontend was generated and iterated on in **GitHub Spark**, and it depends on the Spark runtime for two things:
+The root `build` script skips type checking (`tsc -b --noCheck`), so run `npx tsc -b` as well. The service's tests use a fake Claude client and make no API calls. ESLint skips `service/` and `src/components/ui/`.
 
-| Spark API | Used for | Where |
+### Data model
+
+See [DATABASE.md](DATABASE.md). In short:
+- a **Document** is a raw import;
+- a **Page** is wiki content;
+- **Faction**, **Character**, **Place** and **Battle** are index entries with `aliases`, linked to pages through `Page.entityRefs` (and their own page through `pageId`).
+
+### How an import works
+
+Imports run in two steps, so nothing is saved until you've reviewed the result.
+
+**`previewImport`** (`service/src/import/pipeline.ts`):
+1. Fetches the Google Doc as markdown (`/export?format=md`), or takes the pasted text.
+2. Runs `preClean`, which removes images, the generated contents list, heading anchors and template placeholders, and collects TODO/IDEA notes. The title comes from the first heading if none is given.
+3. Calls `extractEntities` (`service/src/ai/extractEntities.ts`): one streamed Claude request (`claude-opus-5-5`, structured JSON output, server-side refusal fallback) with the cleaned text and a list of every known entity's id, name and aliases.
+4. Resolves each entity Claude returns. An exact name or alias match wins; otherwise Claude's suggested id is used, but only if it exists and is of the same type. Duplicates are merged.
+5. Saves a draft `Document` holding the proposals, and returns them.
+
+**`commitImport`** applies your decisions:
+1. Creates the page.
+2. Processes factions first, so characters, places and battles can link to factions named in the same document.
+3. Creates new entities, and merges matched ones using `buildMergeUpdate` (`service/src/import/merge.ts`).
+4. Links everything to the page.
+
+Running a commit again is safe: a committed document returns its page, and an interrupted run finds the entities it already created by name.
+
+The Claude call is the only place the service talks to an AI provider. To change the model or the prompt, edit `extractEntities.ts`.
+
+### Configuration
+
+| Where | Variable | Default |
 |---|---|---|
-| `useKV(key, default)` | Persistent storage. Keys: `wiki-documents` (pages) and `warhammer-database` (entities) | `App.tsx`, `hooks/use-warhammer-database.ts` |
-| `window.spark.llm(prompt, 'gpt-4o', true)` | AI extraction of factions and characters as JSON | `SmartImportDialog.tsx`, `CharacterExtractionDialog.tsx` |
-
-Running it locally:
-
-```bash
-npm install
-npm run dev        # Vite dev server
-npm run build      # tsc -b --noCheck && vite build
-npm run lint       # ESLint 9 (eslint.config.js); skips service/ and src/components/ui
-npx tsc -b         # full type check (the build script skips it with --noCheck)
-```
-
-The UI builds and runs under Vite, but storage and AI need the Spark runtime. Outside Spark, expect those features to fail until the frontend moves to `service/`.
-
-**Data model (frontend):** see [DATABASE.md](DATABASE.md). A wiki `Document` can point at a database entry through `entityType` (`character` | `faction` | `battle`) and `entityId`. That link is what drives the metadata panel and related pages.
-
-### Backend service (`service/`)
-
-A standalone GraphQL API over MongoDB, meant to replace Spark's KV store and LLM calls.
-
-**Stack:** Node 24 (runs TypeScript directly through `--experimental-strip-types`), Express, `graphql-http`, Mongoose 8, strict TypeScript, no bundler.
-
-```bash
-cd service
-docker compose up -d   # MongoDB 7 on localhost:27018
-npm install
-npm run dev            # http://localhost:4000/graphql (restarts on file changes)
-npm test               # node:test unit tests for the extraction pipeline
-npm run typecheck
-```
-
-Environment variables:
-
-| Variable | Default |
-|---|---|
-| `PORT` | `4000` |
-| `MONGO_URL` | `mongodb://localhost:27018/athenaeum` |
-
-**API:** queries `health`, `documents` / `document(id)`, `characters` / `character(id)`, `factions` / `faction(id)`, `places` / `place(id)`. Mutations `createDocument`, `createCharacter`, `createFaction`, `createPlace`. There are no update or delete mutations yet.
-
-**Models:** `Document` (raw source text), and `Character`, `Faction` and `Place`. All three entity models share a `summary`, a list of `{ heading, body }` sections and `sourceDocumentIds`. Characters have a `stub` flag: it's true when the character was created from a mention rather than from its own document. Factions link to a homeworld, a parent faction and their members.
-
-The backend's entity model is not the same as the frontend's. It has `Place` but no `Battle`, it uses sections instead of a free-text description, and it uses Mongo ObjectIds.
-
-**Extraction pipeline** (`src/extraction/`), deterministic and with no AI:
-
-1. `preClean(raw)` takes a Google Docs markdown export and strips embedded images, the auto-generated contents list, heading anchors (`{#id}`) and unfilled template placeholders. It pulls `<TODO: …>` and `<IDEA: …>` markers out into a separate `openQuestions` list.
-2. `parseStructure(cleaned)` builds a heading tree from the cleaned text. It tolerates empty headings (page-break artifacts) and sections with no body.
-3. `flattenSections(tree)` turns the tree into the `{ heading, body }[]` shape the models store.
-
-The pipeline isn't connected to the API yet.
-
-### Sample data
-
-`tmp/` holds real lore documents (a faction, a warband and a character profile) in the two formats the pipeline has to handle: Google Docs markdown export and plain-text export. Use them as fixtures when you work on extraction.
+| `service/.env` | `ANTHROPIC_API_KEY` | none (needed for imports) |
+| `service/.env` | `PORT` | `4000` |
+| `service/.env` | `MONGO_URL` | `mongodb://localhost:27018/athenaeum` |
+| Root (Vite dev) | `ATHENAEUM_API_TARGET` | `http://localhost:4000` (where `/graphql` is forwarded) |
+| Root (build) | `VITE_API_URL` | `/graphql` (the API URL the built app calls) |
 
 ---
 
-## Roadmap and current state
+## Roadmap
 
 **Done**
-- Spark frontend: import, Smart Import with AI and character merging, wiki rendering, entity database, search.
-- Backend skeleton: models, read and create GraphQL API, a tested cleanup and structure parser.
+- GitHub Spark removed. Storage is MongoDB through the GraphQL service, and AI extraction uses the Claude API from the service.
+- Pages and an entity index (factions, characters, places, battles) with full create, edit and delete.
+- Two-step Google Docs import with entity matching and safe merging.
 
 **Next**
-- Connect `preClean` → `parseStructure` to an import mutation that creates `Document` and entity records.
-- Add the AI extraction step on the backend, to replace `window.spark.llm`.
-- Add update and delete mutations.
-- Settle on one entity model for frontend and backend (Battle vs Place, description vs sections).
-- Point the frontend at the GraphQL API instead of `useKV`, then remove the `@github/spark` dependency.
+- Editing page content in the app (pages can only be renamed today).
+- Editing which entities a page links to, from the page itself.
+- A production setup: build and serve the frontend and service together, and add authentication if it will be shared.
+- `parseStructure` is only used for the page title, and `flattenSections` isn't used at all. Either use them to build per-entity pages from document sections, or remove them.
 
 ### Known issues
 
-- `npm run lint` reports one warning, in `DocumentRenderer.tsx`: a `useMemo` dependency changes on every render. It's harmless but worth tidying.
 - The production bundle is over 500 kB, and Vite warns about chunk size.
+- The Claude extraction hasn't yet been run against a real document in this setup. The import flow has been tested end to end with a stand-in for the Claude response.
 
 ## License
 
-MIT. The Spark template files are © GitHub, Inc. See [LICENSE](LICENSE).
+MIT. Files from the original Spark template are © GitHub, Inc. See [LICENSE](LICENSE).
