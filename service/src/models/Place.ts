@@ -1,22 +1,13 @@
-import { Schema, model, Types, type InferSchemaType } from "mongoose";
+import { Schema, model, type InferSchemaType } from "mongoose";
+import { entityBaseFields } from "./common.ts";
+
+export const PLACE_TYPES = ["homeworld", "fortress_monastery", "ship", "other"] as const;
 
 const placeSchema = new Schema(
     {
-        name: { type: String, required: true },
-        type: {
-            type: String,
-            enum: ["homeworld", "fortress-monastery", "ship", "other"],
-            default: "other",
-        },
-        summary: { type: String, default: "" },
-        sections: [
-            {
-                heading: { type: String, required: true },
-                body: { type: String, default: "" },
-            },
-        ],
-        factionId: { type: Types.ObjectId, ref: "Faction" },
-        sourceDocumentIds: [{ type: Types.ObjectId, ref: "Document" }],
+        ...entityBaseFields,
+        type: { type: String, enum: PLACE_TYPES, default: "other" },
+        factionId: { type: Schema.Types.ObjectId, ref: "Faction", default: null },
     },
     { timestamps: true },
 );
