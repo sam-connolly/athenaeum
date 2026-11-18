@@ -1,28 +1,11 @@
 import { useState } from 'react'
-import { Database, Plus, Trash, Download } from '@phosphor-icons/react'
+import { toast } from 'sonner'
+import { Database, Download, PencilSimple, Plus, Trash } from '@phosphor-icons/react'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { ScrollArea } from '@/components/ui/scroll-area'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -33,566 +16,226 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { useWarhammerDatabase } from '@/hooks/use-warhammer-database'
-import { downloadDatabaseAsJson } from '@/lib/database-utils'
-import { toast } from 'sonner'
+import { EntityForm } from '@/components/EntityForm'
+import { EntityIcon } from '@/components/EntityIcon'
+import { useDeleteEntity, useEntities } from '@/hooks/use-entities'
+import { usePages } from '@/hooks/use-pages'
+import { downloadEntitiesAsJson } from '@/lib/database-utils'
+import {
+  ENTITY_LABELS,
+  ENTITY_TYPES,
+  PLACE_TYPE_LABELS,
+  type AnyEntity,
+  type Battle,
+  type Character,
+  type EntityLists,
+  type EntityType,
+  type Faction,
+  type Place,
+} from '@/types/api'
 
-interface EntityFormData {
-  name: string
-  description?: string
-  factionId?: string
-  role?: string
-  battleIds?: string[]
-  date?: string
-  location?: string
+interface DatabaseManagerProps {
+  onOpenPage: (pageId: string) => void
 }
 
-export function DatabaseManager() {
-  const {
-    database,
-    factions,
-    battles,
-    characters,
-    addFaction,
-    addBattle,
-    addCharacter,
-    deleteFaction,
-    deleteBattle,
-    deleteCharacter,
-    getFactionById,
-  } = useWarhammerDatabase()
+const listFor = (lists: EntityLists, type: EntityType): AnyEntity[] =>
+  ({ faction: lists.factions, character: lists.characters, place: lists.places, battle: lists.battles })[type]
 
+const DELETE_NOTES: Record<EntityType, string> = {
+  faction: 'Its characters and places stay, but are no longer linked to it.',
+  character: 'Pages that mention it are kept.',
+  place: 'Factions and battles that point to it are unlinked.',
+  battle: 'Characters that fought in it are kept.',
+}
+
+/** Type-specific columns: [header, cell renderer]. */
+function columns(type: EntityType, lists: EntityLists): [string, (e: AnyEntity) => React.ReactNode][] {
+  const name = (list: { id: string; name: string }[], id: string | null) => list.find((x) => x.id === id)?.name ?? '—'
+  switch (type) {
+    case 'faction':
+      return [
+        ['Members', (e) => lists.characters.filter((c) => c.factionId === e.id).length],
+        ['Homeworld', (e) => name(lists.places, (e as Faction).homeworldId)],
+      ]
+    case 'character':
+      return [
+        ['Role', (e) => (e as Character).role || '—'],
+        ['Faction', (e) => name(lists.factions, (e as Character).factionId)],
+      ]
+    case 'place':
+      return [
+        ['Kind', (e) => PLACE_TYPE_LABELS[(e as Place).type]],
+        ['Faction', (e) => name(lists.factions, (e as Place).factionId)],
+      ]
+    case 'battle':
+      return [
+        ['Date', (e) => (e as Battle).date || '—'],
+        ['Location', (e) => name(lists.places, (e as Battle).placeId)],
+      ]
+  }
+}
+
+export function DatabaseManager({ onOpenPage }: DatabaseManagerProps) {
   const [open, setOpen] = useState(false)
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
-  const [deleteTarget, setDeleteTarget] = useState<{ type: string; id: string } | null>(null)
-  const [formData, setFormData] = useState<EntityFormData>({ name: '' })
-  const [selectedBattles, setSelectedBattles] = useState<string[]>([])
+  const [tab, setTab] = useState<EntityType>('faction')
+  const [form, setForm] = useState<{ type: EntityType; entity: AnyEntity | null } | null>(null)
+  const [toDelete, setToDelete] = useState<{ type: EntityType; entity: AnyEntity } | null>(null)
 
-  const handleExportDatabase = () => {
-    try {
-      if (!database || (database.factions.length === 0 && database.battles.length === 0 && database.characters.length === 0)) {
-        toast.error('Database is empty. Cannot export an empty database.')
-        return
-      }
-
-      downloadDatabaseAsJson(database)
-      toast.success(`Database exported successfully (${database.factions.length} factions, ${database.battles.length} battles, ${database.characters.length} characters)`)
-    } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : 'Unknown error'
-      toast.error(`Failed to export database: ${errorMsg}`)
-      console.error('Export database error:', error)
-    }
-  }
-  const handleAddFaction = () => {
-    if (!formData.name.trim()) {
-      toast.error('Faction name is required. Please enter a name for the faction.')
-      return
-    }
-
-    if (formData.name.trim().length < 2) {
-      toast.error(`Faction name is too short (${formData.name.trim().length} characters). Please provide at least 2 characters.`)
-      return
-    }
-
-    const existingFaction = factions.find(f => f.name.toLowerCase() === formData.name.trim().toLowerCase())
-    if (existingFaction) {
-      toast.error(`Faction "${formData.name.trim()}" already exists. Please use a different name or edit the existing faction.`)
-      return
-    }
-
-    try {
-      addFaction({
-        name: formData.name,
-        description: formData.description,
-      })
-
-      toast.success(`Faction "${formData.name.trim()}" added successfully`)
-      resetForm()
-      setOpen(false)
-    } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : 'Unknown error'
-      toast.error(`Failed to add faction: ${errorMsg}`)
-      console.error('Add faction error:', error)
-    }
-  }
-
-  const handleAddBattle = () => {
-    if (!formData.name.trim()) {
-      toast.error('Battle name is required. Please enter a name for the battle.')
-      return
-    }
-
-    if (formData.name.trim().length < 2) {
-      toast.error(`Battle name is too short (${formData.name.trim().length} characters). Please provide at least 2 characters.`)
-      return
-    }
-
-    const existingBattle = battles.find(b => b.name.toLowerCase() === formData.name.trim().toLowerCase())
-    if (existingBattle) {
-      toast.error(`Battle "${formData.name.trim()}" already exists. Please use a different name or edit the existing battle.`)
-      return
-    }
-
-    try {
-      addBattle({
-        name: formData.name,
-        description: formData.description,
-        date: formData.date,
-        location: formData.location,
-      })
-
-      toast.success(`Battle "${formData.name.trim()}" added successfully`)
-      resetForm()
-      setOpen(false)
-    } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : 'Unknown error'
-      toast.error(`Failed to add battle: ${errorMsg}`)
-      console.error('Add battle error:', error)
-    }
-  }
-
-  const handleAddCharacter = () => {
-    if (!formData.name.trim()) {
-      toast.error('Character name is required. Please enter a name for the character.')
-      return
-    }
-
-    if (formData.name.trim().length < 2) {
-      toast.error(`Character name is too short (${formData.name.trim().length} characters). Please provide at least 2 characters.`)
-      return
-    }
-
-    if (!formData.factionId) {
-      toast.error('Faction is required. Please select a faction for this character.')
-      return
-    }
-
-    const existingCharacter = characters.find(c => c.name.toLowerCase() === formData.name.trim().toLowerCase())
-    if (existingCharacter) {
-      toast.error(`Character "${formData.name.trim()}" already exists. Please use a different name or edit the existing character.`)
-      return
-    }
-
-    try {
-      addCharacter({
-        name: formData.name,
-        factionId: formData.factionId,
-        battleIds: selectedBattles,
-        role: formData.role,
-        description: formData.description,
-      })
-
-      toast.success(`Character "${formData.name.trim()}" added successfully`)
-      resetForm()
-      setOpen(false)
-    } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : 'Unknown error'
-      toast.error(`Failed to add character: ${errorMsg}`)
-      console.error('Add character error:', error)
-    }
-  }
-
-  const resetForm = () => {
-    setFormData({ name: '' })
-    setSelectedBattles([])
-  }
+  const { lists, isLoading, error } = useEntities()
+  const { data: pages = [] } = usePages()
+  const deleteEntity = useDeleteEntity(toDelete?.type ?? 'faction')
 
   const handleDelete = () => {
-    if (!deleteTarget) {
-      toast.error('No delete target specified. Please try again.')
-      return
-    }
-
-    try {
-      switch (deleteTarget.type) {
-        case 'faction':
-          deleteFaction(deleteTarget.id)
-          toast.success('Faction deleted successfully')
-          break
-        case 'battle':
-          deleteBattle(deleteTarget.id)
-          toast.success('Battle deleted successfully')
-          break
-        case 'character':
-          deleteCharacter(deleteTarget.id)
-          toast.success('Character deleted successfully')
-          break
-        default:
-          toast.error(`Unknown entity type: ${deleteTarget.type}. Cannot delete.`)
-          return
-      }
-
-      setDeleteDialogOpen(false)
-      setDeleteTarget(null)
-    } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : 'Unknown error'
-      toast.error(`Failed to delete ${deleteTarget.type}: ${errorMsg}`)
-      console.error('Delete error:', error)
-    }
-  }
-
-  const confirmDelete = (type: string, id: string) => {
-    setDeleteTarget({ type, id })
-    setDeleteDialogOpen(true)
-  }
-
-  const toggleBattle = (battleId: string) => {
-    setSelectedBattles((prev) =>
-      prev.includes(battleId) ? prev.filter((id) => id !== battleId) : [...prev, battleId]
-    )
+    if (!toDelete) return
+    deleteEntity.mutate(toDelete.entity.id, {
+      onSuccess: () => toast.success(`Deleted ${toDelete.entity.name}`),
+      onError: (e) => toast.error(e.message),
+      onSettled: () => setToDelete(null),
+    })
   }
 
   return (
-    <>
-      <Dialog open={open} onOpenChange={(newOpen) => { setOpen(newOpen); if (!newOpen) resetForm() }}>
-        <DialogTrigger asChild>
-          <Button variant="outline" size="icon">
-            <Database size={20} />
-          </Button>
-        </DialogTrigger>
-        <DialogContent className="max-w-4xl max-h-[90vh]">
-          <DialogHeader>
-            <DialogTitle>Warhammer Database</DialogTitle>
-            <DialogDescription>
-              Manage factions, battles, and characters for your wiki
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="flex justify-end gap-2 pb-2">
-            <Button variant="outline" size="sm" onClick={handleExportDatabase}>
-              <Download size={16} className="mr-2" />
-              Export JSON
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button variant="outline" size="icon" aria-label="Entity database">
+          <Database size={20} />
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-5xl max-h-[90vh] flex flex-col">
+        <DialogHeader>
+          <div className="flex items-center justify-between gap-4 pr-8">
+            <div>
+              <DialogTitle>Entity database</DialogTitle>
+              <DialogDescription>
+                The index behind the wiki: used for tables, and to recognise known entities in new imports.
+              </DialogDescription>
+            </div>
+            <Button variant="outline" size="sm" className="gap-2" onClick={() => downloadEntitiesAsJson(lists)}>
+              <Download size={16} /> Export JSON
             </Button>
           </div>
+        </DialogHeader>
 
-          <Tabs defaultValue="view" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="view">View Entities</TabsTrigger>
-              <TabsTrigger value="add">Add New</TabsTrigger>
-            </TabsList>
+        {error && <p className="text-sm text-destructive">{error.message}</p>}
 
-            <TabsContent value="view" className="space-y-4">
-              <ScrollArea className="h-[500px] pr-4">
-                <div className="space-y-6">
-                  <div>
-                    <h3 className="text-lg font-semibold mb-3">Factions ({factions.length})</h3>
-                    <div className="grid gap-2">
-                      {factions.map((faction) => (
-                        <Card key={faction.id}>
-                          <CardHeader className="pb-3">
-                            <div className="flex items-start justify-between">
-                              <div>
-                                <CardTitle className="text-base">{faction.name}</CardTitle>
-                                {faction.description && (
-                                  <CardDescription className="mt-1">
-                                    {faction.description}
-                                  </CardDescription>
-                                )}
-                              </div>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 text-destructive"
-                                onClick={() => confirmDelete('faction', faction.id)}
-                              >
-                                <Trash size={16} />
-                              </Button>
-                            </div>
-                          </CardHeader>
-                        </Card>
-                      ))}
-                      {factions.length === 0 && (
-                        <p className="text-sm text-muted-foreground">No factions yet</p>
-                      )}
-                    </div>
-                  </div>
+        <Tabs value={tab} onValueChange={(v) => setTab(v as EntityType)} className="flex-1 min-h-0 flex flex-col">
+          <TabsList className="grid grid-cols-2 sm:grid-cols-4 h-auto">
+            {ENTITY_TYPES.map((type) => (
+              <TabsTrigger key={type} value={type} className="gap-1.5">
+                <EntityIcon type={type} /> {ENTITY_LABELS[type].many}
+                <Badge variant="secondary" className="ml-1">
+                  {listFor(lists, type).length}
+                </Badge>
+              </TabsTrigger>
+            ))}
+          </TabsList>
 
-                  <div>
-                    <h3 className="text-lg font-semibold mb-3">Battles ({battles.length})</h3>
-                    <div className="grid gap-2">
-                      {battles.map((battle) => (
-                        <Card key={battle.id}>
-                          <CardHeader className="pb-3">
-                            <div className="flex items-start justify-between">
-                              <div className="flex-1">
-                                <CardTitle className="text-base">{battle.name}</CardTitle>
-                                <div className="flex gap-2 mt-1">
-                                  {battle.date && (
-                                    <Badge variant="secondary" className="text-xs">
-                                      {battle.date}
-                                    </Badge>
-                                  )}
-                                  {battle.location && (
-                                    <Badge variant="secondary" className="text-xs">
-                                      {battle.location}
-                                    </Badge>
-                                  )}
-                                </div>
-                                {battle.description && (
-                                  <CardDescription className="mt-2">
-                                    {battle.description}
-                                  </CardDescription>
-                                )}
-                              </div>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 text-destructive"
-                                onClick={() => confirmDelete('battle', battle.id)}
-                              >
-                                <Trash size={16} />
-                              </Button>
-                            </div>
-                          </CardHeader>
-                        </Card>
-                      ))}
-                      {battles.length === 0 && (
-                        <p className="text-sm text-muted-foreground">No battles yet</p>
-                      )}
-                    </div>
-                  </div>
-
-                  <div>
-                    <h3 className="text-lg font-semibold mb-3">Characters ({characters.length})</h3>
-                    <div className="grid gap-2">
-                      {characters.map((character) => {
-                        const faction = getFactionById(character.factionId)
-                        return (
-                          <Card key={character.id}>
-                            <CardHeader className="pb-3">
-                              <div className="flex items-start justify-between">
-                                <div className="flex-1">
-                                  <CardTitle className="text-base">{character.name}</CardTitle>
-                                  <div className="flex gap-2 mt-1 flex-wrap">
-                                    {faction && (
-                                      <Badge variant="default" className="text-xs">
-                                        {faction.name}
-                                      </Badge>
-                                    )}
-                                    {character.role && (
-                                      <Badge variant="secondary" className="text-xs">
-                                        {character.role}
-                                      </Badge>
-                                    )}
-                                    {character.battleIds.length > 0 && (
-                                      <Badge variant="outline" className="text-xs">
-                                        {character.battleIds.length} battle{character.battleIds.length !== 1 ? 's' : ''}
-                                      </Badge>
-                                    )}
-                                  </div>
-                                  {character.description && (
-                                    <CardDescription className="mt-2">
-                                      {character.description}
-                                    </CardDescription>
-                                  )}
-                                </div>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-8 w-8 text-destructive"
-                                  onClick={() => confirmDelete('character', character.id)}
-                                >
-                                  <Trash size={16} />
-                                </Button>
-                              </div>
-                            </CardHeader>
-                          </Card>
-                        )
-                      })}
-                      {characters.length === 0 && (
-                        <p className="text-sm text-muted-foreground">No characters yet</p>
-                      )}
-                    </div>
-                  </div>
+          {ENTITY_TYPES.map((type) => {
+            const rows = listFor(lists, type)
+            const cols = columns(type, lists)
+            return (
+              <TabsContent key={type} value={type} className="flex-1 min-h-0 overflow-y-auto space-y-3">
+                <div className="flex justify-end">
+                  <Button size="sm" className="gap-2" onClick={() => setForm({ type, entity: null })}>
+                    <Plus size={16} /> Add {ENTITY_LABELS[type].one.toLowerCase()}
+                  </Button>
                 </div>
-              </ScrollArea>
-            </TabsContent>
-
-            <TabsContent value="add" className="space-y-4">
-              <Tabs defaultValue="faction" className="w-full">
-                <TabsList className="grid w-full grid-cols-3">
-                  <TabsTrigger value="faction">Faction</TabsTrigger>
-                  <TabsTrigger value="battle">Battle</TabsTrigger>
-                  <TabsTrigger value="character">Character</TabsTrigger>
-                </TabsList>
-
-                <TabsContent value="faction" className="space-y-4 pt-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="faction-name">Name *</Label>
-                    <Input
-                      id="faction-name"
-                      placeholder="e.g., Ultramarines"
-                      value={formData.name}
-                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="faction-description">Description</Label>
-                    <Textarea
-                      id="faction-description"
-                      placeholder="Brief description of the faction..."
-                      value={formData.description || ''}
-                      onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                      rows={4}
-                    />
-                  </div>
-                  <Button onClick={handleAddFaction} className="w-full">
-                    <Plus size={18} className="mr-2" />
-                    Add Faction
-                  </Button>
-                </TabsContent>
-
-                <TabsContent value="battle" className="space-y-4 pt-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="battle-name">Name *</Label>
-                    <Input
-                      id="battle-name"
-                      placeholder="e.g., Battle of Macragge"
-                      value={formData.name}
-                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="battle-date">Date</Label>
-                      <Input
-                        id="battle-date"
-                        placeholder="e.g., 745.M41"
-                        value={formData.date || ''}
-                        onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="battle-location">Location</Label>
-                      <Input
-                        id="battle-location"
-                        placeholder="e.g., Macragge"
-                        value={formData.location || ''}
-                        onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="battle-description">Description</Label>
-                    <Textarea
-                      id="battle-description"
-                      placeholder="Brief description of the battle..."
-                      value={formData.description || ''}
-                      onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                      rows={4}
-                    />
-                  </div>
-                  <Button onClick={handleAddBattle} className="w-full">
-                    <Plus size={18} className="mr-2" />
-                    Add Battle
-                  </Button>
-                </TabsContent>
-
-                <TabsContent value="character" className="space-y-4 pt-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="character-name">Name *</Label>
-                    <Input
-                      id="character-name"
-                      placeholder="e.g., Marneus Calgar"
-                      value={formData.name}
-                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="character-faction">Faction *</Label>
-                    <Select
-                      value={formData.factionId}
-                      onValueChange={(value) => setFormData({ ...formData, factionId: value })}
-                    >
-                      <SelectTrigger id="character-faction">
-                        <SelectValue placeholder="Select a faction" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {factions.map((faction) => (
-                          <SelectItem key={faction.id} value={faction.id}>
-                            {faction.name}
-                          </SelectItem>
+                {isLoading ? (
+                  <p className="text-sm text-muted-foreground">Loading…</p>
+                ) : rows.length === 0 ? (
+                  <p className="text-sm text-muted-foreground py-8 text-center">
+                    No {ENTITY_LABELS[type].many.toLowerCase()} yet. Import a document or add one.
+                  </p>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Name</TableHead>
+                        {cols.map(([header]) => (
+                          <TableHead key={header}>{header}</TableHead>
                         ))}
-                      </SelectContent>
-                    </Select>
-                    {factions.length === 0 && (
-                      <p className="text-xs text-muted-foreground">Add a faction first</p>
-                    )}
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="character-role">Role</Label>
-                    <Input
-                      id="character-role"
-                      placeholder="e.g., Chapter Master"
-                      value={formData.role || ''}
-                      onChange={(e) => setFormData({ ...formData, role: e.target.value })}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Battles</Label>
-                    <div className="border rounded-md p-3 space-y-2 max-h-32 overflow-y-auto">
-                      {battles.length === 0 ? (
-                        <p className="text-xs text-muted-foreground">No battles available</p>
-                      ) : (
-                        battles.map((battle) => (
-                          <div key={battle.id} className="flex items-center space-x-2">
-                            <input
-                              type="checkbox"
-                              id={`battle-${battle.id}`}
-                              checked={selectedBattles.includes(battle.id)}
-                              onChange={() => toggleBattle(battle.id)}
-                              className="rounded"
-                            />
-                            <label
-                              htmlFor={`battle-${battle.id}`}
-                              className="text-sm cursor-pointer flex-1"
+                        <TableHead>Sources</TableHead>
+                        <TableHead className="w-24" />
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {rows.map((entity) => (
+                        <TableRow key={entity.id}>
+                          <TableCell className="max-w-64">
+                            {entity.pageId ? (
+                              <button
+                                className="font-medium hover:text-primary hover:underline underline-offset-2 text-left"
+                                onClick={() => {
+                                  onOpenPage(entity.pageId!)
+                                  setOpen(false)
+                                }}
+                              >
+                                {entity.name}
+                              </button>
+                            ) : (
+                              <span className="font-medium">{entity.name}</span>
+                            )}
+                            {entity.aliases.length > 0 && (
+                              <p className="text-xs text-muted-foreground truncate" title={entity.aliases.join(', ')}>
+                                {entity.aliases.join(', ')}
+                              </p>
+                            )}
+                          </TableCell>
+                          {cols.map(([header, cell]) => (
+                            <TableCell key={header}>{cell(entity)}</TableCell>
+                          ))}
+                          <TableCell>{entity.sourceDocumentIds.length}</TableCell>
+                          <TableCell className="text-right whitespace-nowrap">
+                            <Button variant="ghost" size="icon" aria-label={`Edit ${entity.name}`} onClick={() => setForm({ type, entity })}>
+                              <PencilSimple size={16} />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="text-destructive hover:text-destructive"
+                              aria-label={`Delete ${entity.name}`}
+                              onClick={() => setToDelete({ type, entity })}
                             >
-                              {battle.name}
-                            </label>
-                          </div>
-                        ))
-                      )}
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="character-description">Description</Label>
-                    <Textarea
-                      id="character-description"
-                      placeholder="Brief description of the character..."
-                      value={formData.description || ''}
-                      onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                      rows={3}
-                    />
-                  </div>
-                  <Button
-                    onClick={handleAddCharacter}
-                    className="w-full"
-                    disabled={factions.length === 0}
-                  >
-                    <Plus size={18} className="mr-2" />
-                    Add Character
-                  </Button>
-                </TabsContent>
-              </Tabs>
-            </TabsContent>
-          </Tabs>
-        </DialogContent>
-      </Dialog>
+                              <Trash size={16} />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
+              </TabsContent>
+            )
+          })}
+        </Tabs>
 
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete {deleteTarget?.type}</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete this {deleteTarget?.type}? This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete}>Delete</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </>
+        {form && (
+          <EntityForm
+            key={`${form.type}-${form.entity?.id ?? 'new'}`}
+            type={form.type}
+            entity={form.entity}
+            lists={lists}
+            pages={pages}
+            open
+            onOpenChange={(next) => !next && setForm(null)}
+          />
+        )}
+
+        <AlertDialog open={!!toDelete} onOpenChange={(next) => !next && setToDelete(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete {toDelete?.entity.name}?</AlertDialogTitle>
+              <AlertDialogDescription>
+                {toDelete && DELETE_NOTES[toDelete.type]} This can't be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={handleDelete}>Delete</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </DialogContent>
+    </Dialog>
   )
 }

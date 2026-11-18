@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { FileText, Pencil, Trash, User, Shield, Sword, FunnelSimple } from '@phosphor-icons/react'
+import { FileText, Pencil, Trash, FunnelSimple } from '@phosphor-icons/react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -22,25 +22,31 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import type { Document } from '@/types/document'
+import { EntityIcon } from '@/components/EntityIcon'
+import { ENTITY_LABELS, ENTITY_TYPES, type EntityType, type PageSummary } from '@/types/api'
 import { cn } from '@/lib/utils'
 
 interface SidebarProps {
-  documents: Document[]
-  activeDocumentId: string | null
-  onSelectDocument: (id: string) => void
-  onDeleteDocument: (id: string) => void
-  onRenameDocument: (id: string, newTitle: string) => void
+  /** Already narrowed by the search query (the server does the searching). */
+  pages: PageSummary[]
+  isSearching: boolean
+  activePageId: string | null
+  onSelectPage: (id: string) => void
+  onDeletePage: (id: string) => void
+  onRenamePage: (id: string, newTitle: string) => void
   searchQuery: string
   onSearchChange: (query: string) => void
 }
 
+type FilterKey = EntityType | 'unlinked'
+
 export function Sidebar({
-  documents,
-  activeDocumentId,
-  onSelectDocument,
-  onDeleteDocument,
-  onRenameDocument,
+  pages,
+  isSearching,
+  activePageId,
+  onSelectPage,
+  onDeletePage,
+  onRenamePage,
   searchQuery,
   onSearchChange,
 }: SidebarProps) {
@@ -48,47 +54,35 @@ export function Sidebar({
   const [editTitle, setEditTitle] = useState('')
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [hoveredId, setHoveredId] = useState<string | null>(null)
-  const [entityFilters, setEntityFilters] = useState<{
-    character: boolean
-    faction: boolean
-    battle: boolean
-    unlinked: boolean
-  }>({
-    character: true,
+  const [entityFilters, setEntityFilters] = useState<Record<FilterKey, boolean>>({
     faction: true,
+    character: true,
+    place: true,
     battle: true,
     unlinked: true,
   })
 
-  const filteredDocs = documents.filter((doc) => {
-    const matchesSearch =
-      doc.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      doc.content.toLowerCase().includes(searchQuery.toLowerCase())
-
-    if (!matchesSearch) return false
-
-    if (doc.entityType === 'character') return entityFilters.character
-    if (doc.entityType === 'faction') return entityFilters.faction
-    if (doc.entityType === 'battle') return entityFilters.battle
-    if (!doc.entityType) return entityFilters.unlinked
-
-    return true
-  })
+  // A page is shown if it links at least one entity of a ticked type (or is unlinked and "Unlinked" is ticked).
+  const filteredPages = pages.filter((page) =>
+    page.entityRefs.length === 0
+      ? entityFilters.unlinked
+      : page.entityRefs.some((ref) => entityFilters[ref.type]),
+  )
 
   const activeFilterCount = Object.values(entityFilters).filter((v) => !v).length
 
-  const toggleFilter = (key: keyof typeof entityFilters) => {
+  const toggleFilter = (key: FilterKey) => {
     setEntityFilters((prev) => ({ ...prev, [key]: !prev[key] }))
   }
 
-  const handleStartEdit = (doc: Document) => {
-    setEditingId(doc.id)
-    setEditTitle(doc.title)
+  const handleStartEdit = (page: PageSummary) => {
+    setEditingId(page.id)
+    setEditTitle(page.title)
   }
 
   const handleSaveEdit = () => {
     if (editingId && editTitle.trim()) {
-      onRenameDocument(editingId, editTitle.trim())
+      onRenamePage(editingId, editTitle.trim())
     }
     setEditingId(null)
     setEditTitle('')
@@ -101,29 +95,22 @@ export function Sidebar({
 
   const handleConfirmDelete = () => {
     if (deleteId) {
-      onDeleteDocument(deleteId)
+      onDeletePage(deleteId)
       setDeleteId(null)
     }
   }
 
-  const getDocumentIcon = (doc: Document) => {
-    switch (doc.entityType) {
-      case 'character':
-        return <User size={18} className="text-accent" />
-      case 'faction':
-        return <Shield size={18} className="text-primary" />
-      case 'battle':
-        return <Sword size={18} className="text-destructive" />
-      default:
-        return <FileText size={18} className="text-muted-foreground" />
-    }
+  // Icon of the first linked entity type, so faction and character pages stand out.
+  const getPageIcon = (page: PageSummary) => {
+    const type = ENTITY_TYPES.find((t) => page.entityRefs.some((ref) => ref.type === t))
+    return type ? <EntityIcon type={type} size={18} /> : <FileText size={18} className="text-muted-foreground" />
   }
 
   return (
     <aside className="w-80 h-full border-r border-border bg-card flex flex-col">
       <div className="p-4 border-b border-border space-y-3">
         <div className="flex items-center justify-between">
-          <h2 className="text-xl font-semibold">Documents</h2>
+          <h2 className="text-xl font-semibold">Pages</h2>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon" className="h-8 w-8 relative">
@@ -139,42 +126,31 @@ export function Sidebar({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48">
-              <DropdownMenuLabel>Filter by type</DropdownMenuLabel>
+              <DropdownMenuLabel>Show pages linking</DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuCheckboxItem
-                checked={entityFilters.character}
-                onCheckedChange={() => toggleFilter('character')}
-              >
-                <User size={16} className="mr-2" />
-                Characters
-              </DropdownMenuCheckboxItem>
-              <DropdownMenuCheckboxItem
-                checked={entityFilters.faction}
-                onCheckedChange={() => toggleFilter('faction')}
-              >
-                <Shield size={16} className="mr-2" />
-                Factions
-              </DropdownMenuCheckboxItem>
-              <DropdownMenuCheckboxItem
-                checked={entityFilters.battle}
-                onCheckedChange={() => toggleFilter('battle')}
-              >
-                <Sword size={16} className="mr-2" />
-                Battles
-              </DropdownMenuCheckboxItem>
+              {ENTITY_TYPES.map((type) => (
+                <DropdownMenuCheckboxItem
+                  key={type}
+                  checked={entityFilters[type]}
+                  onCheckedChange={() => toggleFilter(type)}
+                >
+                  <EntityIcon type={type} className="mr-2" />
+                  {ENTITY_LABELS[type].many}
+                </DropdownMenuCheckboxItem>
+              ))}
               <DropdownMenuCheckboxItem
                 checked={entityFilters.unlinked}
                 onCheckedChange={() => toggleFilter('unlinked')}
               >
                 <FileText size={16} className="mr-2" />
-                Unlinked
+                No entities
               </DropdownMenuCheckboxItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
         <Input
           type="search"
-          placeholder="Search documents..."
+          placeholder="Search pages..."
           value={searchQuery}
           onChange={(e) => onSearchChange(e.target.value)}
           className="w-full"
@@ -183,33 +159,33 @@ export function Sidebar({
 
       <div className="flex-1 overflow-y-auto p-2">
         <AnimatePresence mode="popLayout">
-          {filteredDocs.length === 0 ? (
+          {filteredPages.length === 0 ? (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               className="p-4 text-center text-muted-foreground text-sm"
             >
-              {searchQuery ? 'No matching documents' : 'No documents yet'}
+              {isSearching ? 'Searching…' : searchQuery ? 'No matching pages' : 'No pages yet'}
             </motion.div>
           ) : (
-            filteredDocs.map((doc) => (
+            filteredPages.map((page) => (
               <motion.div
-                key={doc.id}
+                key={page.id}
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -20 }}
                 transition={{ duration: 0.15 }}
-                onMouseEnter={() => setHoveredId(doc.id)}
+                onMouseEnter={() => setHoveredId(page.id)}
                 onMouseLeave={() => setHoveredId(null)}
                 className={cn(
                   'group relative mb-1 rounded-lg transition-colors',
-                  activeDocumentId === doc.id
+                  activePageId === page.id
                     ? 'bg-secondary border-l-4 border-primary'
                     : 'hover:bg-secondary/50'
                 )}
               >
-                {editingId === doc.id ? (
+                {editingId === page.id ? (
                   <div className="p-2">
                     <Input
                       value={editTitle}
@@ -225,20 +201,20 @@ export function Sidebar({
                   </div>
                 ) : (
                   <button
-                    onClick={() => onSelectDocument(doc.id)}
+                    onClick={() => onSelectPage(page.id)}
                     className="w-full text-left p-3 flex items-start gap-2"
                   >
-                    {getDocumentIcon(doc)}
+                    {getPageIcon(page)}
                     <div className="flex-1 min-w-0">
-                      <h3 className="text-sm font-medium truncate">{doc.title}</h3>
+                      <h3 className="text-sm font-medium truncate">{page.title}</h3>
                       <p className="text-xs text-muted-foreground">
-                        {new Date(doc.updatedAt).toLocaleDateString()}
+                        {new Date(page.updatedAt).toLocaleDateString()}
                       </p>
                     </div>
                   </button>
                 )}
 
-                {editingId !== doc.id && hoveredId === doc.id && (
+                {editingId !== page.id && hoveredId === page.id && (
                   <motion.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
@@ -250,7 +226,7 @@ export function Sidebar({
                       className="h-7 w-7"
                       onClick={(e) => {
                         e.stopPropagation()
-                        handleStartEdit(doc)
+                        handleStartEdit(page)
                       }}
                     >
                       <Pencil size={14} />
@@ -261,7 +237,7 @@ export function Sidebar({
                       className="h-7 w-7 text-destructive hover:text-destructive"
                       onClick={(e) => {
                         e.stopPropagation()
-                        setDeleteId(doc.id)
+                        setDeleteId(page.id)
                       }}
                     >
                       <Trash size={14} />
@@ -277,9 +253,9 @@ export function Sidebar({
       <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Document</AlertDialogTitle>
+            <AlertDialogTitle>Delete page</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete this document? This action cannot be undone.
+              Delete this page? Entities linked to it stay in the database. This can't be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
