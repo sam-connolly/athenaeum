@@ -10,7 +10,6 @@ import { Badge } from '@/components/ui/badge'
 import { Switch } from '@/components/ui/switch'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import { ScrollArea } from '@/components/ui/scroll-area'
 import {
   Dialog,
   DialogContent,
@@ -151,7 +150,7 @@ export function ImportDialog({ onImported, trigger }: ImportDialogProps) {
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col">
+      <DialogContent className="sm:max-w-3xl max-h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>{preview ? 'Review import' : 'Add a page'}</DialogTitle>
           <DialogDescription>
@@ -163,7 +162,7 @@ export function ImportDialog({ onImported, trigger }: ImportDialogProps) {
 
         {!preview ? (
           <Tabs value={mode} onValueChange={(v) => setMode(v as Mode)} className="space-y-4">
-            <TabsList className="grid grid-cols-3">
+            <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="google">Google Doc</TabsTrigger>
               <TabsTrigger value="paste">Paste text</TabsTrigger>
               <TabsTrigger value="write">Write page</TabsTrigger>
@@ -245,7 +244,7 @@ export function ImportDialog({ onImported, trigger }: ImportDialogProps) {
           </Tabs>
         ) : (
           <>
-            <ScrollArea className="flex-1 min-h-0 -mx-6 px-6">
+            <div className="flex-1 min-h-0 overflow-y-auto -mx-6 px-6">
               <div className="space-y-4 pb-2">
                 <div className="space-y-2">
                   <Label htmlFor="page-title">Page title</Label>
@@ -325,7 +324,7 @@ export function ImportDialog({ onImported, trigger }: ImportDialogProps) {
                   </Alert>
                 )}
               </div>
-            </ScrollArea>
+            </div>
 
             <DialogFooter className="gap-2 sm:gap-2">
               <Button variant="outline" onClick={() => setPreview(null)} disabled={commitImport.isPending}>

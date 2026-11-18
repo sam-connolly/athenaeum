@@ -99,7 +99,7 @@ export function EntityForm({ type, entity, lists, pages, open, onOpenChange }: E
     <div className="space-y-1.5">
       <Label>{title}</Label>
       <Select value={(values[key] as string) || NONE} onValueChange={(v) => set(key, v === NONE ? '' : v)}>
-        <SelectTrigger>
+        <SelectTrigger className="w-full" aria-label={title}>
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
@@ -185,7 +185,7 @@ export function EntityForm({ type, entity, lists, pages, open, onOpenChange }: E
               <div className="space-y-1.5">
                 <Label>Kind of place</Label>
                 <Select value={values.type as string} onValueChange={(v) => set('type', v as PlaceType)}>
-                  <SelectTrigger>
+                  <SelectTrigger className="w-full" aria-label="Kind of place">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>

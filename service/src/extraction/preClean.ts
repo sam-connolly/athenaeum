@@ -31,14 +31,24 @@ const TEMPLATE_INSTRUCTION = /\([^()]*\)\\?\[[^\]]*\\?\]/g;
 
 const OPEN_QUESTION_MARKER = /\\?<(TODO|IDEA):\s*([^>]*?)\s*\\?>/gi;
 
+// Google's markdown export backslash-escapes punctuation (e.g. "\\<Mountain name").
+const MARKDOWN_ESCAPE = /\\([\\`*_{}\[\]()#+\-.!<>|])/g;
+
 function extractOpenQuestions(text: string): { text: string; openQuestions: OpenQuestion[] } {
     const openQuestions: OpenQuestion[] = [];
+    const seen = new Set<string>();
 
     const withoutMarkers = text.replace(OPEN_QUESTION_MARKER, (_match, type, body) => {
-        openQuestions.push({
+        const question: OpenQuestion = {
             type: type.toUpperCase() as "TODO" | "IDEA",
-            text: body.trim(),
-        });
+            text: body.replace(MARKDOWN_ESCAPE, "$1").trim(),
+        };
+        // Templates often repeat the same note in several places; list it once.
+        const key = `${question.type}:${question.text}`;
+        if (!seen.has(key)) {
+            seen.add(key);
+            openQuestions.push(question);
+        }
         return "";
     });
 

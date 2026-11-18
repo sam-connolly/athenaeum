@@ -20,7 +20,7 @@ export function PageView({ pageId, onSelectPage }: PageViewProps) {
 
   if (!pageId) {
     return (
-      <div className="flex items-center justify-center h-full text-muted-foreground">
+      <div className="flex items-center justify-center min-h-[60vh] text-muted-foreground">
         <p className="text-lg">Select a page to read</p>
       </div>
     )
@@ -38,7 +38,7 @@ export function PageView({ pageId, onSelectPage }: PageViewProps) {
 
   if (error || !page || !rendered) {
     return (
-      <div className="flex items-center justify-center h-full text-muted-foreground p-8 text-center">
+      <div className="flex items-center justify-center min-h-[60vh] text-muted-foreground p-8 text-center">
         <p>{error ? error.message : 'This page no longer exists.'}</p>
       </div>
     )

@@ -1,4 +1,5 @@
 import { test } from "node:test";
+import Anthropic from "@anthropic-ai/sdk";
 import assert from "node:assert/strict";
 import { buildUserMessage, extractEntities, MODEL, type ExtractionClient } from "./extractEntities.ts";
 
@@ -43,4 +44,17 @@ test("reports truncated output instead of returning partial data", async () => {
 
 test("buildUserMessage says when nothing is known yet", () => {
     assert.match(buildUserMessage("doc", []), /KNOWN ENTITIES:\n\(none yet\)/);
+});
+
+test("explains missing credentials instead of passing the SDK message through", async () => {
+    const client = {
+        beta: {
+            messages: {
+                stream: () => {
+                    throw new Anthropic.AnthropicError("Could not resolve authentication method.");
+                },
+            },
+        },
+    } as unknown as ExtractionClient;
+    await assert.rejects(extractEntities("x", [], client), /isn't set up: .*ANTHROPIC_API_KEY in service\/\.env/);
 });

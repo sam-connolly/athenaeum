@@ -101,7 +101,7 @@ export function DatabaseManager({ onOpenPage }: DatabaseManagerProps) {
           <Database size={20} />
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-5xl max-h-[90vh] flex flex-col">
+      <DialogContent className="sm:max-w-5xl max-h-[90vh] flex flex-col">
         <DialogHeader>
           <div className="flex items-center justify-between gap-4 pr-8">
             <div>
@@ -119,7 +119,7 @@ export function DatabaseManager({ onOpenPage }: DatabaseManagerProps) {
         {error && <p className="text-sm text-destructive">{error.message}</p>}
 
         <Tabs value={tab} onValueChange={(v) => setTab(v as EntityType)} className="flex-1 min-h-0 flex flex-col">
-          <TabsList className="grid grid-cols-2 sm:grid-cols-4 h-auto">
+          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 h-auto">
             {ENTITY_TYPES.map((type) => (
               <TabsTrigger key={type} value={type} className="gap-1.5">
                 <EntityIcon type={type} /> {ENTITY_LABELS[type].many}

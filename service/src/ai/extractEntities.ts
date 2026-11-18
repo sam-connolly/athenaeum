@@ -98,6 +98,12 @@ export async function extractEntities(
         if (error instanceof Anthropic.APIError) {
             throw new Error(`AI extraction failed (${error.status ?? "no status"}): ${error.message}`);
         }
+        // Errors raised before any request is sent are client set-up problems, most often missing credentials.
+        if (error instanceof Anthropic.AnthropicError) {
+            throw new Error(
+                `AI extraction isn't set up: ${error.message}. Set ANTHROPIC_API_KEY in service/.env and restart the service.`,
+            );
+        }
         throw error;
     }
 
